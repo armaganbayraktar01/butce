@@ -1,0 +1,24 @@
+{
+  "name": "hfa",
+  "version": "1.0.0",
+  "description": "<<<<<<< HEAD\r # cms\r İçerik Yönetim Sistemi\r =======\r # cms_\r cms 2025\r >>>>>>> 77ca5b7fa1644d35d81370710954931583bb8e47",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/armaganbayraktar01/hfa.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/armaganbayraktar01/hfa/issues"
+  },
+  "homepage": "https://github.com/armaganbayraktar01/hfa#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "puppeteer": "^24.12.1"
+  }
+}

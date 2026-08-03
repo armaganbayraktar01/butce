@@ -1,0 +1,24 @@
+.admin-tab {
+    background: #fff;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, .15);
+    overflow: hidden;
+}
+.admin-tab li {
+    float: left;
+    margin: 0 10px;
+}
+.admin-tab li a {
+    line-height: 50px;
+    padding: 0 10px;
+    color: #222;
+    font-weight: 600;
+    display: block;
+}
+.admin-tab li.active a {
+    box-shadow: 0 2px 0 0 #00a0d2 inset;
+}
+.tab-container {
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, .15);
+}

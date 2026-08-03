@@ -1,0 +1,15 @@
+.table-sortable tr td:first-child {
+    position: relative;
+    padding-left: 20px;
+}
+
+.table-sortable tr td:first-child:before {
+    content: '';
+    width: 8px;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #999;
+    cursor: move;
+}

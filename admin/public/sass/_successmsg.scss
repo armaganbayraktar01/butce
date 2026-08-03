@@ -1,0 +1,22 @@
+.success-msg {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: green;
+    text-align: center;
+    box-sizing: border-box;
+    padding: 20px;
+    font-size: 18px;
+    font-weight: 300;
+    color: #fff;
+    z-index: 100;
+}
+.success-close-btn {
+    position: absolute;
+    top: 18px;
+    right: 20px;
+    color: #fff;
+    font-size: 20px;
+}
