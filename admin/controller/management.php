@@ -1,329 +1,78 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-if (!isset($_SESSION)) {
-    session_start();
+
+// 1. DÖNEM VE ZAMAN YÖNETİMİ
+if (!isset($_SESSION['aktif_donem']) || empty($_SESSION['aktif_donem'])) {
+    $en_guncel_sorgu = $db->query("SELECT aktif_donem FROM butce_akis ORDER BY aktif_donem DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $_SESSION['aktif_donem'] = ($en_guncel_sorgu && !empty($en_guncel_sorgu['aktif_donem'])) ? $en_guncel_sorgu['aktif_donem'] : date('Y-m');
 }
 
+$aktif_donem = $_SESSION['aktif_donem'];
 
-$error = "";
-
-// 📌 1. TALEP VE OTURUM METRİKLERİNİN YAKALANMASI
-$islem       = $_POST['islem'] ?? '';
-$faiz_stopaj = 17.5;
-$aktif_donem = $_SESSION['aktif_donem'] ?? '2026-07'; 
-
-// Finansal Anayasa: Sabit kredi ödeme tutarı her zaman korunur
-$evKredisiTutariStandart = 53315.33; 
-
-// 🎯 REFORM: İnputtan gelen ham veriyi yakala ve session'da mühürle
-if (isset($_POST['faiz_kredi_butcesi'])) {
-    $_SESSION['saf_kredi_input_butcesi'] = floatval($_POST['faiz_kredi_butcesi']);
-}
-// Eğer session boşsa varsayılan olarak 53200.00 ata
-$kredi_input_butcesi = $_SESSION['saf_kredi_input_butcesi'] ?? 53200.00;
-
-// 2. Oturum Tanımlamaları ve Faiz Parametreleri
-$faiz_orani      = isset($_POST['faiz_orani']) ? floatval($_POST['faiz_orani']) : ($_SESSION['dinamik_faiz_orani'] ?? 30.00);
-$faiz_gun_sayisi = isset($_POST['faiz_gun_sayisi']) ? intval($_POST['faiz_gun_sayisi']) : ($_SESSION['dinamik_faiz_gun_sayisi'] ?? 1);
-
-// Canlı tetiklenen faiz parametreleri oturuma kilitlenir
-$_SESSION['dinamik_faiz_orani']      = $faiz_orani;
-$_SESSION['dinamik_faiz_gun_sayisi'] = $faiz_gun_sayisi;
-
-// 🎯 BİLEŞİK FAİZ HAVUZU: Faiz aktarıldıkça büyüyen bütçe takibi
-if (!isset($_SESSION['dinamik_faiz_kredi_butcesi'])) {
-    $_SESSION['dinamik_faiz_kredi_butcesi'] = $kredi_input_butcesi;
-}
-$dinamik_faiz_kredi_butcesi = $_SESSION['dinamik_faiz_kredi_butcesi'];
-
-$isbank_o_faizsiz_ana_para = $dinamik_faiz_kredi_butcesi;
-
-$ay_isimleri = [
-    1=>'OCAK', 2=>'ŞUBAT', 3=>'MART', 4=>'NİSAN', 5=>'MAYIS', 6=>'HAZİRAN', 
-    7=>'TEMMUZ', 8=>'AĞUSTOS', 9=>'EYLÜL', 10=>'EKİM', 11=>'KASIM', 12=>'ARALIK'
-];
-
-// 📌 2. TÜM FİNANSAL HAVUZ BİLEŞENLERİNİN İLK DEĞER BARİYERİ
-$isbank_a_anapara  = 0.00; $isbank_a_nema  = 0.00; $isbank_a_bakiye  = 0.00;
-$isbank_o_anapara  = 0.00; $isbank_o_nema  = 0.00; $isbank_o_bakiye  = 0.00;
-$vakif_o_anapara   = 0.00; $vakif_o_nema   = 0.00; $vakif_o_bakiye   = 0.00;
-$nakit_anapara     = 0.00; $nakit_nema     = 0.00; $nakit_bakiye     = 0.00;
-
-$vakif_bloke       = 0.00; 
-$nakit_bloke       = 0.00; 
-
-$ozge_maas_alindi    = false;
-$armagan_maas_alindi = false;
-$maktu_mesai_alindi  = false;
-$kredi_odendi        = false;
-
-$db_ozge_maas        = 0.00;
-$db_armagan_maas     = 0.00;
-$db_maktu_mesai      = 0.00;
-$db_ev_kredisi       = 0.00;
-
-$damacana_kalan_butce = 1120.00;
-$aidat_aylik_butce    = 0.00;
-$aidat_odenen_tutar   = 0.00;
-
-// 📌 3. VERİ TABANINDAN CARİ AY LİSTESİNİN ÇEKİLMESİ
-$stmt_Sorgu = $db->prepare("SELECT * FROM butce_akis WHERE aktif_donem = :donem ORDER BY id ASC");
-$stmt_Sorgu->execute(['donem' => $aktif_donem]);
-$kalemler = $stmt_Sorgu->fetchAll(PDO::FETCH_ASSOC);
-
+$ay_isimleri = [1=>'OCAK', 2=>'ŞUBAT', 3=>'MART', 4=>'NİSAN', 5=>'MAYIS', 6=>'HAZİRAN', 7=>'TEMMUZ', 8=>'AĞUSTOS', 9=>'EYLÜL', 10=>'EKİM', 11=>'KASIM', 12=>'ARALIK'];
 list($aktif_yil, $aktif_ay_str) = explode('-', $aktif_donem);
 $aktif_ay_index = intval($aktif_ay_str);
 
 
 
- // 🚀 4. MERKEZİ VERİ İŞLEME DÖNGÜSÜ (CENTRAL PROCESSING LOOP - %100 SIZINTISIZ SÜZGEC)
-foreach ($kalemler as $kalem) {
-    $isim      = trim($kalem['kalem_adi']);
-    $tutar     = floatval($kalem['tutar']);
-    $odenan    = floatval($kalem['odenen_tutar']);
-    $turu      = $kalem['turu'];
-    $k_kucuk   = mb_strtolower($isim, 'UTF-8');
-    
-    $is_odendi = ($odenan > 0 || ($turu === 'gelir' && $odenan == $tutar && $tutar > 0));
+// FİNANSAL METRİKLER VE PARAMETRELER
 
-    // 🟢 A. GELİR (ENJEKSİYON) AKIŞLARININ ANALİZİ (%100 SIZINTISIZ KİLİTLİ MATRİS)
-    if ($turu === 'gelir') {
-        
-        if ($is_odendi) {
-            
-            // 🎯 REFORM 1: TRANSFER SÜZGECİ EN ÜSTE ALINDI (HİÇBİR KURAL TEĞET GEÇEMEZ!)
-            if (strpos($k_kucuk, 'transfer') !== false) {
-                // Para VAKIFBANK'A gidiyorsa
-                if (strpos($k_kucuk, '-> vakif') !== false || strpos($k_kucuk, '-> vakıf') !== false) {
-                    $vakif_o_anapara += $odenan; // Hedef havuz doldu
-                    
-                    // 🏛️ MUTLAK DÜŞÜM: Kaynak neresi olursa olsun içinden 'isbank' geçiyorsa İşbank A'dan düş!
-                    if (strpos($k_kucuk, 'isbank') !== false) {
-                        $isbank_a_anapara -= $odenan; 
-                    } 
-                    elseif (strpos($k_kucuk, 'nakit') !== false || strpos($k_kucuk, 'nakıt') !== false) {
-                        $nakit_anapara -= $odenan;
-                    }
-                } 
-                // Para NAKİT havuzuna gidiyorsa
-                elseif (strpos($k_kucuk, '-> nakit') !== false || strpos($k_kucuk, '-> nakıt') !== false) {
-                    $nakit_anapara += $odenan;
-                    
-                    if (strpos($k_kucuk, 'isbank') !== false) {
-                        $isbank_a_anapara -= $odenan;
-                    } elseif (strpos($k_kucuk, 'vakif') !== false || strpos($k_kucuk, 'vakıf') !== false) {
-                        $vakif_o_anapara -= $odenan;
-                    }
-                } 
-                // Para İŞBANKASI A havuzuna geliyorsa
-                elseif (strpos($k_kucuk, '-> isbank') !== false) {
-                    $isbank_a_anapara += $odenan;
-                    
-                    if (strpos($k_kucuk, 'nakit') !== false || strpos($k_kucuk, 'nakıt') !== false) {
-                        $nakit_anapara -= $odenan;
-                    } elseif (strpos($k_kucuk, 'vakif') !== false || strpos($k_kucuk, 'vakıf') !== false) {
-                        $vakif_o_anapara -= $odenan;
-                    }
-                }
-                continue; // Çift taraflı enjeksiyon bitti, alt kurallara sızmaması için döngüyü kır!
-            }
+if (isset($_POST['telefon_birim_fiyat'])) {
+    $_SESSION['sys_telefon_birim_fiyat'] = floatval(str_replace(',', '.', $_POST['telefon_birim_fiyat']));
+}
+if (isset($_POST['su_birim_fiyat'])) {
+    $_SESSION['sys_su_birim_fiyat'] = floatval(str_replace(',', '.', $_POST['su_birim_fiyat']));
+}
 
-            // 🎯 REFORM 2: FAİZ GELİRLERİ SÜZGECİ (2. SIRAYA ALINDI)
-            if (strpos($k_kucuk, 'faizgeliri') !== false) {
-                if (strpos($k_kucuk, '_a') !== false) {
-                    $isbank_a_anapara += $odenan;
-                } elseif (strpos($k_kucuk, '_o') !== false) {
-                    $isbank_o_anapara += $odenan;
-                }
-                continue; 
-            }
-            
-            // 🎯 KURAL 3: Evdeki Nakit Girişi
-            if ($isim === 'Evdeki Nakit Girişi') {
-                $nakit_anapara += $odenan;
-                continue;
-            }
 
-            // 🎯 KURAL 4: Ana Maaş Enjeksiyon Kontrolleri
-            if (strpos($isim, 'Özge') !== false && strpos($isim, 'Maaş') !== false) {
-                $db_ozge_maas = $tutar;
-                $ozge_maas_alindi = true;
-                
-                $isbank_o_anapara += $kredi_input_butcesi; 
-                $isbank_a_anapara += max(0, $odenan - $kredi_input_butcesi); 
-            }
-            elseif (strpos($isim, 'Armağan') !== false && strpos($isim, 'Maaş') !== false) {
-                $db_armagan_maas = $tutar;
-                $armagan_maas_alindi = true;
-                $isbank_a_anapara += $odenan;
-            }
-            elseif (strpos($isim, 'Maktu') !== false || strpos($isim, 'Mesai') !== false) {
-                $db_maktu_mesai = $tutar;
-                $maktu_mesai_alindi = true;
-                $isbank_a_anapara += $odenan;
-            }
-            elseif (strpos($isim, 'Fazla Ödeme') !== false || strpos($k_kucuk, 'fazla ödemesi') !== false) {
-                $isbank_a_anapara += $odenan;
-            }
-            // 🎯 KURAL 5: Ön Takılı İstisna Diğer Harici Gelirler
-            else {
-                if (preg_match('/^v(\s+|-|_|$)/i', $k_kucuk))      { $vakif_o_anapara += $odenan; }
-                elseif (preg_match('/^n(\s+|-|_|$)/i', $k_kucuk))   { $nakit_anapara += $odenan; }
-                elseif (preg_match('/^y(\s+|-|_|$)/i', $k_kucuk))   { $isbank_a_anapara += $odenan; }
-            }
-        }
-    }
-    // 🔴 B. GİDER AKIŞLARININ ANALİZİ (%100 GÜVENLİ VE NET HAVUZ DÜŞÜM MOTORU)
-    else {
-        // 🎯 KURAL 1: Havuz Transfer Fonları Gelir (A) tarafında çift taraflı (Borç/Alacak) olarak işlendi.
-        // Gider tarafında mükerrer (üst üste iki kez) düşüm yaparak cüzdanları eksiye uçurmaması için burayı direkt atlıyoruz.
-        if (strpos($k_kucuk, 'havuz transfer fonu') !== false) {
-            continue;
-        }
+$telefonFaturasiBirimTutari = $_SESSION['sys_telefon_birim_fiyat'] ?? 340.00;
+$damacanaSuBirimTutari      = $_SESSION['sys_su_birim_fiyat']      ?? 140.00;
 
-        // 🎯 KURAL 2: Aidat harcaması Nakit anaparasından düşer, ödenmediyse Nakit Bloke bütçesine rezerve olur.
-        if ($isim === 'Aidat') {
-            $aidat_aylik_butce = $tutar; 
-            $aidat_odenen_tutar = $odenan;
-            if ($odenan > 0) { 
-                $nakit_anapara -= $odenan; 
-            } else { 
-                $nakit_bloke += $tutar; 
-            }
-        }
-        // 🎯 KURAL 3: Damacana / İçme Suyu bütçe kalemi Nakit cüzdanından düşer, kalan bütçe rezerve olur.
-        elseif (strpos($k_kucuk, 'damacana') !== false || strpos($k_kucuk, 'içme suyu') !== false) {
-            $damacana_kalan_butce = $tutar; 
-            $saf_harcanan_su = max(0, 1120.00 - $tutar);
-            if ($saf_harcanan_su > 0) { 
-                $nakit_anapara -= $saf_harcanan_su; 
-            } 
-            $nakit_bloke += $tutar;
-        }
-        // 🎯 KURAL 4: Ev Kredisi ödendiği an İşbank (Ö) [Kredi Cüzdanı] anaparasından düşer!
-        elseif (strpos($k_kucuk, 'kredi') !== false) {
-            $db_ev_kredisi = $tutar; 
-            if ($odenan > 0) { 
-                $kredi_odendi = true; 
-                $isbank_o_anapara -= $odenan; 
-            }
-        }
-        // 🎯 KURAL 5: Nergiz Cep hiçbir harcama matrisine yazılmaz ve pas geçilir
-        elseif ($isim === 'Nergiz Cep') { 
-            continue; 
-        }
-///
+$damacanaMiktari = intval(damacanaMiktari($aktif_donem)) * 2;
+$aylikInternetFaturasiTutari = 407.00;
 
-        // 6. Kredi Kartları ve Diğer Faturaların/Ön Takıların Dağıtım İstasyonu
-        else {
-            $is_sabit_fatura = false;
-            foreach (['faturası', 'izsu', 'elektrik', 'su', 'doğalgaz', 'telefon', 'internet'] as $sk) {
-                if (strpos($k_kucuk, $sk) !== false) { $is_sabit_fatura = true; break; }
-            }
-            
-            // 🎯 BLOKE MANTIĞI: Eğer sabit bir faturasıysa ve HENÜZ ÖDENMEDİYSE Vakıfbank Bloke rezervine eklenir
-            if ($is_sabit_fatura && !$is_odendi) {
-                $vakif_bloke += $tutar;
-            }
-            
-            // Sadece ödenmiş olan gider kalemleri ilgili havuzların anaparasını eritir (Reel Erime)
-            if ($is_odendi) {
-                if (strpos($isim, 'İşbank') !== false && strpos($isim, 'KK') !== false) {
-                    $isbank_a_anapara -= $odenan;
-                }
-                elseif (strpos($isim, 'Vakıfbank') !== false && strpos($isim, 'KK') !== false) {
-                    $isbank_a_anapara -= $odenan; 
-                }
-                // 🎯 REEL ERİME REFORMU: Sabit faturalar ödendiği an İşbank A'dan değil, VAKIFBANK Ö havuzundan erir!
-                elseif ($is_sabit_fatura || preg_match('/^v(\s+|-|_|$)/i', $k_kucuk)) {
-                    $vakif_o_anapara -= $odenan;
-                }
-                elseif (preg_match('/^n(\s+|-|_|$)/i', $k_kucuk)) {
-                    $nakit_anapara -= $odenan;
-                }
-                elseif (preg_match('/^y(\s+|-|_|$)/i', $k_kucuk)) {
-                    $isbank_a_anapara -= $odenan;
-                }
-                else {
-                    // Ön takısız düz harici giderler peşinen değil, sadece ÖDENİNCE İşbank A'dan düşer
-                    $isbank_a_anapara -= $odenan;
-                }
+$aylikDamacanaTutari = $damacanaMiktari * $damacanaSuBirimTutari;
+$aylikTelefonFaturasi = $telefonFaturasiBirimTutari * 2;
+  
+
+// 1. Orijinal Sabitler (Fabrika Ayarları)
+$faiz_stopaj = 17.5;
+$faiz_oran = 30.00;
+$faiz_gun = 0;
+
+$evKredisiTutariStandart = 53315.33;
+$evKredisiConst = 53200.00; 
+
+if (isset($_POST['evKredisiHam'])) {
+    $_SESSION['evKredisiHam'] = floatval($_POST['evKredisiHam']);
+}
+if (isset($_POST['faiz_gun_sayisi'])) {
+    $_SESSION['dinamik_faiz_gun_sayisi'] = intval($_POST['faiz_gun_sayisi']);
+}
+if (isset($_POST['faiz_orani'])) {
+    $_SESSION['dinamik_faiz_orani'] = floatval($_POST['faiz_orani']);
+}
+
+$evKredisiHam = $_SESSION['evKredisiHam'] ?? $evKredisiConst;
+$faiz_orani = $_SESSION['dinamik_faiz_orani'] ?? $faiz_oran;
+$faiz_gun_sayisi = $_SESSION['dinamik_faiz_gun_sayisi'] ?? $faiz_gun;
 
 
 
 
 
+// MOTORU ÇALIŞTIR
+$engine = new LiquidityEngine($db, $aktif_donem);
 
+  
+$islem = $_POST['islem'] ?? '';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($islem)) {
+    while (ob_get_level()) { ob_end_clean(); }
+    header('Content-Type: application/json; charset=utf-8');
 
-
-
-
-
-/*
-
-
-
-        // 🎯 KURAL 6: Kredi Kartları, Sabit Faturalar ve Ön Takılı/Standart Tüm Harici Gider Süzgeci
-        else {
-            // Fatura kelimelerinin taranması ve Vakıf Bloke bütçesine kilitlenmesi
-            $is_sabit_fatura = false;
-            foreach (['faturası', 'izsu', 'elektrik', 'su', 'doğalgaz', 'telefon', 'internet'] as $sk) {
-                if (strpos($k_kucuk, $sk) !== false) { 
-                    $is_sabit_fatura = true; 
-                    break; 
-                }
-            }
-            if ($is_sabit_fatura && !$is_odendi) { 
-                $vakif_bloke += $tutar; 
-            }
-            
-            // ÖDEMESİ YAPILAN (FİZİKSEL OLARAK CÜZDANDAN ÇIKAN) GIDERLERIN ANALIZ MATRISI
-            if ($is_odendi) {
-                // A. Kredi Kartı Ödemeleri (Aylık kesinleşen ekstreler doğrudan İşbank A ana havuzundan düşer)
-                if (strpos($isim, 'İşbank') !== false && strpos($isim, 'KK') !== false) { 
-                    $isbank_a_anapara -= $odenan; 
-                }
-                elseif (strpos($isim, 'Vakıfbank') !== false && strpos($isim, 'KK') !== false) { 
-                    $isbank_a_anapara -= $odenan; 
-                }
-                
-                // B. 'v ' Ön Takılı Giderler veya Sabit Faturalar: Doğrudan Vakıfbank (Ö) Fatura cüzdanından düşer!
-                elseif (preg_match('/^v(\s+|-|_|$)/i', $k_kucuk) || $is_sabit_fatura) { 
-                    $vakif_o_anapara -= $odenan; 
-                }
-                
-                // C. 'n ' Ön Takılı Giderler: Doğrudan Nakit (Ev) cüzdanından düşer!
-                elseif (preg_match('/^n(\s+|-|_|$)/i', $k_kucuk)) { 
-                    $nakit_anapara -= $odenan; 
-                }
-                
-                // D. 'y ' Ön Takılı Giderler veya Ön Takısı Olmayan Standart Tüm Giderler (Örn: Cam Balkon vb.):
-                // Doğrudan İşbank (A) [Yatırım Ana Havuzu] anaparasından düşer!
-                elseif (preg_match('/^y(\s+|-|_|$)/i', $k_kucuk)) { 
-                    $isbank_a_anapara -= $odenan; 
-                }
-                else { 
-                    $isbank_a_anapara -= $odenan; 
-                }
-
-*/
-            }
-        }
-    }
-} 
-
-// <--- MERKEZİ VERİ İŞLEME DÖNGÜSÜNÜN (FOREACH) ASIL KAPANIŞ PARANTEZİ
-
-
-/**
- * 🏛️ PART 2: REQUEST ROUTER & ACTION ENGINES (POST)
- * Tüm buton aksiyonları, bileşik faiz aktarımları ve erken çıkışlı ödeme motorları.
- */
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = intval($_POST['id'] ?? 0);
-
-    // 💳 1. FORM YAKALAYICI: 12 AYLIK TAKSİT MATRİSİ GÜNCELLEME SÜRECİ
+    // Sol Sütun
     if ($islem === 'taksit_kaydet') {
         $isbank_taksitler = $_POST['isbank_taksit'] ?? [];
         $vakif_taksitler  = $_POST['vakif_taksit'] ?? [];
@@ -340,595 +89,1160 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // 💳 2. FORM YAKALAYICI: CARİ AY MANUEL HESAP KESİM VERİLERİNİ GÜNCELLEME
     if ($islem === 'cari_girdiler_kaydet') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 🎯 REFORM: Mükerrer str_replace sızıntılarını önleyen merkezi temizlik fonksiyonu
+        if (!function_exists('finansalParaParse')) {
+        // 🎯 REFORM: Hem HTML5 Number inputlarını hem de formatlı metinleri kuruşu kuruşuna çözen akıllı parse motoru
+        if (!function_exists('finansalParaParse')) {
+            function finansalParaParse($deger) {
+                if ($deger === null || trim($deger) === '') return 0.00;
+                
+                $deger = trim(str_replace(['₺', ' '], '', $deger));
+                
+                // SENARYO A: Eğer değer '47437.26' gibi standart HTML5 number formatındaysa doğrudan float'a çevir
+                if (preg_match('/^\d+\.\d+$/', $deger)) {
+                    return floatval($deger);
+                }
+                
+                // SENARYO B: Eğer değer '47.437,26' gibi binlik noktalı ve virgüllü bütçe formatındaysa
+                if (strpos($deger, '.') !== false && strpos($deger, ',') !== false) {
+                    $temiz = str_replace('.', '', $deger); // Binlik noktalarını kaldır
+                    $temiz = str_replace(',', '.', $temiz); // Ondalık virgülü noktaya çevir
+                    return floatval($temiz);
+                }
+                
+                // SENARYO C: Eğer değer sadece tek bir virgül içeriyorsa '47437,26' ➡️ '47437.26'
+                if (strpos($deger, ',') !== false && strpos($deger, '.') === false) {
+                    $temiz = str_replace(',', '.', $deger);
+                    return floatval($temiz);
+                }
+                
+                // SENARYO D: Eğer düz tam sayı ise '47437'
+                return floatval($deger);
+            }
+        }
+
+        }
+
+        // Üst kesinleşen dönem ham girdileri
+        $raw_isbank = $_POST['isbank_kesinlesen_donem'] ?? '';
+        $raw_vakif  = $_POST['vakif_kesinlesen_donem'] ?? '';
+
+        // 1. ADIM: İki input birden tamamen boşsa engelle (En az biri dolu olmalı)
+        if (trim($raw_isbank) === '' && trim($raw_vakif) === '') {
+            ob_clean(); 
+            echo json_encode(['status' => 'error', 'message' => '⚠️ Hata: Kesinleşen dönem tutarlarının en az biri doldurulmalıdır!']); 
+            exit;
+        }
+
+        // 2. ADIM: Merkezi motor üzerinden pürüzsüz dönüştürme
+        $isbank_kesinlesen_donem_tutar = finansalParaParse($raw_isbank);
+        $vakif_kesinlesen_donem_tutar  = finansalParaParse($raw_vakif);
+
+        // 3. ADIM: Kredi kartları detay tablosu alt girdilerinin temizlenmesi
         $kartlar = [
             'isbank' => [
-                'donem_ici'         => floatval($_POST['isbank_donem_ici'] ?? 0), 
-                'provizyon'         => floatval($_POST['isbank_provizyon'] ?? 0), 
-                'doviz_borcu'       => floatval($_POST['isbank_doviz'] ?? 0),
-                'kesinlesen_ekstre' => floatval($_POST['isbank_ekstre'] ?? 0)
+                'donem_ici'         => finansalParaParse($_POST['isbank_donem_ici'] ?? 0), 
+                'provizyon'         => finansalParaParse($_POST['isbank_provizyon'] ?? 0), 
+                'doviz_borcu'       => finansalParaParse($_POST['isbank_doviz'] ?? 0),
+                'kesinlesen_ekstre' => finansalParaParse($_POST['isbank_ekstre'] ?? 0)
             ],
             'vakifbank' => [
-                'donem_ici'         => floatval($_POST['vakif_donem_ici'] ?? 0), 
-                'provizyon'         => floatval($_POST['vakif_provizyon'] ?? 0), 
-                'doviz_borcu'       => floatval($_POST['vakif_doviz'] ?? 0),
-                'kesinlesen_ekstre' => floatval($_POST['vakif_ekstre'] ?? 0)
+                'donem_ici'         => finansalParaParse($_POST['vakif_donem_ici'] ?? 0), 
+                'provizyon'         => finansalParaParse($_POST['vakif_provizyon'] ?? 0), 
+                'doviz_borcu'       => finansalParaParse($_POST['vakif_doviz'] ?? 0),
+                'kesinlesen_ekstre' => finansalParaParse($_POST['vakif_ekstre'] ?? 0)
             ]
         ];
 
-        foreach ($kartlar as $kart_adi => $m) {
-            $db->prepare("
-                UPDATE kredi_kartlari 
-                SET donem_ici = :donem_ici, 
-                    provizyon = :provizyon, 
-                    doviz_borcu = :doviz, 
-                    kesinlesen_ekstre = :ekstre 
-                WHERE kart_adi = :kart_adi
-            ")->execute([
-                'donem_ici' => $m['donem_ici'], 
-                'provizyon' => $m['provizyon'], 
-                'doviz'     => $m['doviz_borcu'], 
-                'ekstre'    => $m['kesinlesen_ekstre'], 
-                'kart_adi'  => $kart_adi
-            ]);
+        try {
+            $db->beginTransaction();
+
+            // 4. HAMLE: Kredi kartları detay tablosunu güncelliyoruz
+            foreach ($kartlar as $kart_adi => $m) {
+                $db->prepare("
+                    UPDATE kredi_kartlari 
+                    SET donem_ici = :donem_ici, 
+                        provizyon = :provizyon, 
+                        doviz_borcu = :doviz, 
+                        kesinlesen_ekstre = :ekstre 
+                    WHERE kart_adi = :kart_adi
+                ")->execute([
+                    'donem_ici' => $m['donem_ici'], 
+                    'provizyon' => $m['provizyon'], 
+                    'doviz'     => $m['doviz_borcu'], 
+                    'ekstre'    => $m['kesinlesen_extre'] ?? $m['kesinlesen_ekstre'], 
+                    'kart_adi'  => $kart_adi
+                ]);
+            }
+
+            // 5. HAMLE: Kilit kontrolü ve esnek senkronizasyon matrisi (|| kilidi kırıldı!)
+            
+            // --- İŞBANKASI KREDİ KARTI SEYRİ ---
+            if ($isbank_kesinlesen_donem_tutar > 0) {
+                $checkIsbank = $db->prepare("SELECT is_locked FROM butce_akis WHERE aktif_donem = ? AND turu = 'gider' AND name = 'kredi_karti_a' LIMIT 1");
+                $checkIsbank->execute([$aktif_donem]);
+                $isbankSatir = $checkIsbank->fetch(PDO::FETCH_ASSOC);
+
+                if ($isbankSatir && intval($isbankSatir['is_locked']) === 1) {
+                    throw new Exception("⚠️ İşbankası Kredi Kartı (A) borcu bu dönem ödenip kilitlendiği için yeni ekstre tutarı kaydedilemez!");
+                }
+                
+                $db->prepare("
+                    UPDATE butce_akis 
+                    SET tutar = :tutar 
+                    WHERE name = :kart_adi 
+                    AND aktif_donem = :donem
+                ")->execute([
+                    'tutar'    => $isbank_kesinlesen_donem_tutar, 
+                    'kart_adi' => 'kredi_karti_a',
+                    'donem'    => $aktif_donem
+                ]);
+            }
+
+            // --- VAKIFBANK KREDİ KARTI SEYRİ ---
+            if ($vakif_kesinlesen_donem_tutar > 0) {
+                $checkVakif = $db->prepare("SELECT is_locked FROM butce_akis WHERE aktif_donem = ? AND turu = 'gider' AND name = 'kredi_karti_o' LIMIT 1");
+                $checkVakif->execute([$aktif_donem]);
+                $vakifSatir = $checkVakif->fetch(PDO::FETCH_ASSOC);
+
+                if ($vakifSatir && intval($vakifSatir['is_locked']) === 1) {
+                    throw new Exception("⚠️ Vakıfbank Kredi Kartı (Ö) borcu bu dönem ödenip kilitlendiği için yeni ekstre tutarı kaydedilemez!");
+                }
+                
+                $db->prepare("
+                    UPDATE butce_akis 
+                    SET tutar = :tutar 
+                    WHERE name = :kart_adi 
+                    AND aktif_donem = :donem
+                ")->execute([
+                    'tutar'    => $vakif_kesinlesen_donem_tutar, 
+                    'kart_adi' => 'kredi_karti_o',
+                    'donem'    => $aktif_donem
+                ]);
+            }
+
+            $db->commit();
+            ob_clean(); 
+            echo json_encode(['status' => 'success']); 
+            exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); 
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); 
+            exit;
         }
-        echo json_encode(['status' => 'success']); 
-        exit;
     }
 
-    // 🟢🔴 3. FORM YAKALAYICI: GELİR VEYA GİDER KALEMLERİNİ TOPLU KAYDETME
-    if ($islem === 'butce_kaydet') {
+    // Orta Sütun
+
+    if ($islem === 'gelir_kaydet') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
         $kalemler_data = $_POST['kalemler'] ?? [];
-        foreach ($kalemler_data as $k_id => $data) {
-            $k_id  = intval($k_id); 
-            $adi   = trim($data['adi'] ?? ''); 
-            $tutar = floatval($data['tutar'] ?? 0);
-            
-            if ($k_id > 0 && $adi !== '') {
-                $db->prepare("UPDATE butce_akis SET kalem_adi = :adi, tutar = :tutar WHERE id = :id AND aktif_donem = :donem")
-                ->execute([
-                    'adi'   => $adi, 
-                    'tutar' => $tutar, 
-                    'id'    => $k_id, 
-                    'donem' => $aktif_donem
-                ]);
+
+
+        try {
+            $db->beginTransaction();
+
+            foreach ($kalemler_data as $k_id => $data) {
+                $k_id  = intval($k_id); 
+                $tutar = floatval(str_replace(',', '.', $data['tutar'] ?? 0));
+
+                if ($k_id <= 0) continue;
+
+                // Satırın mevcut durumunu ve name anahtarını çekiyoruz
+                $kontrol = $db->prepare("SELECT name, is_locked, turu FROM butce_akis WHERE id = ? AND aktif_donem = ? LIMIT 1");
+                $kontrol->execute([$k_id, $aktif_donem]);
+                $satir = $kontrol->fetch(PDO::FETCH_ASSOC);
+
+                // Emniyet Bariyeri: Satır yoksa, gelir değilse veya ödenip kilitlendiyse kesinlikle dokunma!
+                if (!$satir || $satir['turu'] !== 'gelir' || intval($satir['is_locked']) === 1) {
+                    continue;
+                }
+
+                $sysName = trim($satir['name']);
+
+                // 🎯 KURAL: Sadece maas_o, maas_a ve maktu_mesai name anahtarına sahip satırların TUTARI güncellenir!
+                // Kalem adına (isim) ve alt satırdan eklenen ek gelirlere kesinlikle dokunulmaz!
+                if (in_array($sysName, ['maas_o', 'maas_a', 'maktu_mesai'])) {
+                    $db->prepare("UPDATE butce_akis SET tutar = :tutar WHERE id = :id AND aktif_donem = :donem")
+                       ->execute([
+                           'tutar' => $tutar, 
+                           'id'    => $k_id, 
+                           'donem' => $aktif_donem
+                       ]);
+                }
             }
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => "Gelir Toplu Kayıt Hatası: " . $e->getMessage()]); exit;
         }
+    }
+
+    if ($islem === 'gider_kaydet') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $kalemler_data = $_POST['kalemler'] ?? [];
+
+
+        try {
+            $db->beginTransaction();
+
+            // 🎯 Sadece bütçe tutarları güncellenecek mühürlü şablon sabitleri listesi
+            $guncellenecek_sabitler = ['kredi_karti_a', 'kredi_karti_o','elektrik', 'su', 'dogalgaz', 'internet', 'aidat'];
+
+            foreach ($kalemler_data as $k_id => $data) {
+                $k_id  = intval($k_id); 
+                $tutar = floatval(str_replace(',', '.', $data['tutar'] ?? 0));
+
+                if ($k_id <= 0) continue;
+
+                // Satırın mevcut durumunu ve name anahtarını çekiyoruz
+                $kontrol = $db->prepare("SELECT name, is_locked, turu FROM butce_akis WHERE id = ? AND aktif_donem = ? LIMIT 1");
+                $kontrol->execute([$k_id, $aktif_donem]);
+                $satir = $kontrol->fetch(PDO::FETCH_ASSOC);
+
+                // Emniyet Bariyeri: Satır yoksa, gider değilse veya ödenip kilitlendiyse kesinlikle dokunma!
+                if (!$satir || $satir['turu'] !== 'gider' || intval($satir['is_locked']) === 1) {
+                    continue;
+                }
+
+                $sysName = trim($satir['name']);
+
+                // 🎯 KURAL 1: Eğer hedef listesindeyse (elektrik, su, dogalgaz, internet, aidat) SADECE TUTAR güncellenir!
+                // 🎯 KURAL 2: Eğer $sysName === 'harcama_nakit' ise (alt satırdan eklenen ek giderler) buraya asla giremez, tutarları sıfır sızıntıyla korunur!
+                if (in_array($sysName, $guncellenecek_sabitler)) {
+                    $db->prepare("UPDATE butce_akis SET tutar = :tutar WHERE id = :id AND aktif_donem = :donem")
+                       ->execute([
+                           'tutar' => $tutar, 
+                           'id'    => $k_id, 
+                           'donem' => $aktif_donem
+                       ]);
+                }
+            }
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => "Gider Toplu Kayıt Hatası: " . $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'birimFiyat_kaydet') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Gelen verileri güvenli float süzgecinden geçirerek oturuma mühürlüyoruz
+        $_SESSION['sys_telefon_birim_fiyat'] = floatval(str_replace(',', '.', $_POST['telefon_birim_fiyat'] ?? 340.00));
+        $_SESSION['sys_su_birim_fiyat']      = floatval(str_replace(',', '.', $_POST['su_birim_fiyat'] ?? 140.00));
+
+        ob_clean(); 
         echo json_encode(['status' => 'success']); 
         exit;
     }
 
-    // ⚙️ 4. İŞLEM: YENİ GELİR / GİDER KALEMİ EKLEME MOTORU (TRANSFER DESTEKLİ)
-    if ($islem === 'yeni_kalem_ekle') {
-        $adi   = trim($_POST['kalem_adi'] ?? ''); 
-        $tutar = floatval($_POST['tutar'] ?? 0); 
-        $turu  = $_POST['turu'] === 'gelir' ? 'gelir' : 'gider';
-        
-        if ($adi !== '' && $tutar > 0) {
-            $temiz_adi = mb_strtolower($adi, 'UTF-8');
-            if (strpos($temiz_adi, 'havuz transfer') !== false) {
-                $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, odenme_tarihi) VALUES (:donem, :adi, :tutar, :odenen, :turu, NOW())")
-                ->execute(['donem' => $aktif_donem, 'adi' => $adi, 'tutar' => $tutar, 'odenen' => $tutar, 'turu' => $turu]);
+    if ($islem === 'gelir_kalem_ekle') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $kalemAdi   = trim($_POST['kalem_adi'] ?? '');
+        $havuzKodu  = trim($_POST['havuz_kodu'] ?? '');
+        $aktifDonem = $_SESSION['aktif_donem'] ?? date('Y-m');
+        $tutar      = floatval(str_replace(',', '.', $_POST['tutar'] ?? 0));
+        // JS'den gelen öz hakiki tür (Varsayılan 'gelir')
+        $turu       = trim($_POST['turu'] ?? 'gelir'); 
+
+        if (empty($kalemAdi) || $tutar <= 0 || empty($havuzKodu)) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Eksik veya hatalı parametre girdisi!']); exit;
+        }
+
+        try {
+            // 🎯 MÜHÜR: turu parametresi açıkça 'gelir' olarak SQL'e yazılır, gidere karışamaz!
+            $sorgu = $db->prepare("INSERT INTO butce_akis (kalem_adi, turu, tutar, odenen_tutar, islem_gunu, aktif_donem, odenme_tarihi, is_locked, havuz_kodu) VALUES (?, ?, ?, 0.00, ?, ?, NULL, 0, ?)");
+            
+            $islemGunu = intval(date('d'));
+            $durum = $sorgu->execute([$kalemAdi, $turu, $tutar, $islemGunu, $aktifDonem, $havuzKodu]);
+
+            if ($durum) {
+                ob_clean(); echo json_encode(['status' => 'success']); exit;
             } else {
-                $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu) VALUES (:donem, :adi, :tutar, 0.00, :turu)")
-                ->execute(['donem' => $aktif_donem, 'adi' => $adi, 'tutar' => $tutar, 'turu' => $turu]);
+                ob_clean(); echo json_encode(['status' => 'error', 'message' => 'SQL bütçe yazma hatası gerçekleşti!']); exit;
             }
-            echo json_encode(['status' => 'success']);
-        } else { 
-            echo json_encode(['status' => 'error']); 
+        } catch (Exception $e) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Veritabanı Hatası: ' . $e->getMessage()]); exit;
         }
-        exit;
     }
 
-    // ⚙️ 5. İŞLEM: TEKİL GEÇİCİ KALEM SİLME MOTORU
-    if ($islem === 'kalem_sil') {
-        if ($id > 0) { 
-            $db->prepare("DELETE FROM butce_akis WHERE id = :id")->execute(['id' => $id]); 
-            echo json_encode(['status' => 'success']); 
+    if ($islem === 'gider_kalem_ekle') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $kalemAdi   = trim($_POST['kalem_adi'] ?? '');
+        $havuzKodu  = trim($_POST['havuz_kodu'] ?? '');
+        $aktifDonem = $_SESSION['aktif_donem'] ?? date('Y-m');
+        $tutar      = floatval(str_replace(',', '.', $_POST['tutar'] ?? 0));
+        $turu       = trim($_POST['turu'] ?? 'gider'); // JS'den gelen saf gider kimliği
+
+        if (empty($kalemAdi) || $tutar <= 0 || empty($havuzKodu)) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Eksik veya hatalı parametre girdisi!']); exit;
         }
-        exit;
+
+        try {
+            // 🎯 MÜHÜR 1: turu alanı kesinlikle 'gider' olarak SQL'e mühürlenir
+            $sorgu = $db->prepare("INSERT INTO butce_akis (kalem_adi, turu, tutar, odenen_tutar, islem_gunu, aktif_donem, odenme_tarihi, is_locked, havuz_kodu) VALUES (?, ?, ?, 0.00, ?, ?, NULL, 0, ?)");
+            $islemGunu = intval(date('d'));
+            $sorgu->execute([$kalemAdi, $turu, $tutar, $islemGunu, $aktifDonem, $havuzKodu]);
+
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+        } catch (Exception $e) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'SQL Gider Ekleme Hatası: ' . $e->getMessage()]); exit;
+        }
     }
 
-    // ⚙️ 6. İŞLEM: EXCEL MATRİS SÜTUNLARINA KÜMÜLATİF DAĞITIM VE ÖDEME MOTORU
-    if ($id > 0 && ($islem === 'maas_eft' || $islem === 'ode')) {
-        $stmt = $db->prepare("SELECT id, kalem_adi, tutar, turu FROM butce_akis WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $k_row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($islem === 'gelir_eft') {
+        if (ob_get_length()) { ob_clean(); } else { while (ob_get_level()) { ob_end_clean(); } ob_start(); }
+        header('Content-Type: application/json; charset=utf-8');
 
-        if ($k_row) {
-            $isim = trim($k_row['kalem_adi']);
-            $kilitlenecek_tutar = floatval($k_row['tutar']);
-            $turu = $k_row['turu'];
-            $k_kucuk = mb_strtolower($isim, 'UTF-8');
+        $gelen_isim  = trim($_POST['kalem_adi'] ?? '');
+        $gelirTuru   = trim($_POST['gelir_turu'] ?? 'dinamik_ek_gelir');
+        $havuzKodu   = trim($_POST['havuz_kodu'] ?? '');
+        $id          = intval($_POST['id'] ?? 0);
+        $aktifDonem  = $_SESSION['aktif_donem'] ?? date('Y-m');
+        $kAdiKucuk   = mb_strtolower($gelen_isim, 'UTF-8');
 
-            // 🏦 VAKIFBANK KREDİ KARTI ÖDEME ANINDA CANLI BORÇ KİLİTLEME VE ANINDA ERKEN ÇIKIŞ
-            if (strpos($isim, 'Vakıfbank') !== false && strpos($isim, 'KK') !== false) {
-                $cc = $db->query("SELECT donem_ici, provizyon, doviz_borcu, kesinlesen_ekstre FROM kredi_kartlari WHERE kart_adi='vakifbank'")->fetch(PDO::FETCH_ASSOC);
-                $t_tutar = $db->query("SELECT vakif_tutar FROM cc_taksitler WHERE ay_index = $aktif_ay_index")->fetchColumn();
-                $kilitlenecek_tutar = floatval($cc['donem_ici'] ?? 0) + floatval($cc['provizyon'] ?? 0) + floatval($cc['doviz_borcu'] ?? 0) + floatval($cc['kesinlesen_ekstre'] ?? 0) + floatval($t_tutar);
-                if ($kilitlenecek_tutar <= 0) { $kilitlenecek_tutar = 30000.00; }
+        if (strpos($gelen_isim, '(') !== false) {
+            $parcalar = explode('(', $gelen_isim);
+            $gelen_isim = trim($parcalar[0]);
+            $kAdiKucuk  = mb_strtolower($gelen_isim, 'UTF-8');
+        }
+
+        $hamTutar = $_POST['odenen_tutar'] ?? 0;
+        $odenenTutar = floatval(str_replace(',', '.', $hamTutar));
+
+        if ($gelirTuru === 'ozge_maas')     $odenenTutar = floatval(str_replace(',', '.', $_POST['toplam_maas_tutar'] ?? 0));
+        if ($gelirTuru === 'maktu_mesai')   $odenenTutar = floatval(str_replace(',', '.', $_POST['maktu_tutar'] ?? 0));
+        if ($gelirTuru === 'armagan_maas')  $odenenTutar = floatval(str_replace(',', '.', $_POST['armagan_maas_tutar'] ?? 0));
+
+        if (empty($gelen_isim) || $odenenTutar <= 0) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Parametre Hatası: Kalem adı boş veya tutar bütçe sınırları dışında!']); exit;
+        }
+
+        try {
+            $db->beginTransaction();
+
+            // 🎯 REFORM 1: butce_akis tablosunda sanal satır aranırken 'turu = "gelir"' şartı zorunlu kılındı!
+            // Böylece isminde "su" yazan gerçek bir gider faturası satırı asla yanlışlıkla mühürlenemez.
+            if ($id <= 0 && !empty($gelen_isim)) {
+                $arama_kelimesi = '%' . $gelen_isim . '%';
+                $kontrolSorgu = $db->prepare("SELECT id FROM butce_akis WHERE aktif_donem = ? AND turu = 'gelir' AND (kalem_adi LIKE ? OR ? LIKE CONCAT('%', kalem_adi, '%')) LIMIT 1");
+                $kontrolSorgu->execute([$aktifDonem, $arama_kelimesi, $gelen_isim]);
+                $id = intval($kontrolSorgu->fetchColumn());
+            }
+
+            // 🎯 REFORM 2: Eğer id varsa, bu satırın gerçekten bir GELİR satırı olduğunu ve kilitli olmadığını DB düzeyinde bir kez daha doğrula!
+            if ($id > 0) {
+                $kalemSorgu = $db->prepare("SELECT id, havuz_kodu, is_locked, turu FROM butce_akis WHERE id = ? LIMIT 1");
+                $kalemSorgu->execute([$id]);
+                $kalemRow = $kalemSorgu->fetch(PDO::FETCH_ASSOC);
+
+                if (!$kalemRow || $kalemRow['turu'] !== 'gelir') {
+                    throw new Exception("Bariyer Blokesi: Doğrulamaya çalışılan bütçe kalemi bir GELİR satırı değil!");
+                }
+                if (intval($kalemRow['is_locked']) === 1) {
+                    throw new Exception("Bu bütçe kalemi daha önce zaten ödenmiş ve kilitlenmiş!");
+                }
+
+                if (!empty($kalemRow['havuz_kodu'])) { $havuzKodu = trim($kalemRow['havuz_kodu']); }
+            }
+
+            if (empty($havuzKodu)) { $havuzKodu = 'isbank_a'; }
+
+            // 🎯 REFORM 3: UPSERT - Yoksa otomatik oluştur (turu='gelir'), varsa id ile kilitle
+            if ($id <= 0) {
+                $eklemeSorgu = $db->prepare("INSERT INTO butce_akis (kalem_adi, turu, tutar, odenen_tutar, islem_gunu, aktif_donem, odenme_tarihi, is_locked, havuz_kodu) VALUES (?, 'gelir', ?, ?, ?, ?, NOW(), 1, ?)");
+                $islemGunu = intval(date('d'));
+                $eklemeSorgu->execute([$gelen_isim, $odenenTutar, $odenenTutar, $islemGunu, $aktifDonem, $havuzKodu]);
+                $id = intval($db->lastInsertId());
+            } else {
+                $mühürSorgu = $db->prepare("UPDATE butce_akis SET odenen_tutar = ?, is_locked = 1, odenme_tarihi = NOW() WHERE id = ?");
+                $mühürSorgu->execute([$odenenTutar, $id]);
+            }
+
+            // 3. ADIM: SAF SQL MATRAH BÜYÜTME MOTORU (+)
+            $is_ozge_sorgu = ($gelirTuru === 'ozge_maas' || preg_match('/zge.*maa/i', $kAdiKucuk) || strpos($kAdiKucuk, 'özge') !== false);
+
+            if ($is_ozge_sorgu) {
+                $hamIsbankO = $evKredisiHam ?? $evKredisiConst;
+                $isbankOTutari = floatval(str_replace(',', '.', $hamIsbankO));
+                if ($isbankOTutari <= 0) $isbankOTutari = $evKredisiConst;
+
+                $isbankATutari = max(0, $odenenTutar - $isbankOTutari);
+
+                $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + ? WHERE havuz_kodu = 'isbank_o'")->execute([$isbankOTutari]);
+                $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + ? WHERE havuz_kodu = 'isbank_a'")->execute([$isbankATutari]);
                 
-                $db->prepare("UPDATE butce_akis SET odenen_tutar = :odenen, odenme_tarihi = NOW() WHERE id = :id")->execute(['odenen' => $kilitlenecek_tutar, 'id' => $id]);
-                $db->query("UPDATE kredi_kartlari SET donem_ici = 0.00, provizyon = 0.00, doviz_borcu = 0.00, kesinlesen_ekstre = 0.00 WHERE kart_adi = 'vakifbank'");
-                $db->query("UPDATE cc_taksitler SET vakif_tutar = 0.00 WHERE ay_index = $aktif_ay_index");
-                
-                $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
-                $db->prepare("UPDATE `aylik_harcama_raporu` SET `kredi_karti_o` = `kredi_karti_o` + :t_tutar WHERE `donem` = :donem")->execute(['t_tutar' => $kilitlenecek_tutar, 'donem' => $aktif_donem]);
-                echo json_encode(['status' => 'success']); 
-                exit;
+                if ($id > 0) {
+                    $db->prepare("UPDATE butce_akis SET havuz_kodu = 'isbank_a' WHERE id = ?")->execute([$id]);
+                }
+            } else {
+                $havuzMühür = $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + ? WHERE havuz_kodu = ?");
+                $havuzMühür->execute([$odenenTutar, $havuzKodu]);
+            }
+
+            // 4. ADIM: aylik_harcama_raporu Tablosunun Kümülatif Güncellenmesi
+            $raporKontrol = $db->prepare("SELECT COUNT(*) FROM aylik_harcama_raporu WHERE donem = ?");
+            $raporKontrol->execute([$aktifDonem]);
+            $raporVarMi = (intval($raporKontrol->fetchColumn()) > 0);
+
+            $raporSutun = 'ek_gelir'; 
+            if ($is_ozge_sorgu) {
+                $raporSutun = 'maas_o';
+            } elseif ($gelirTuru === 'maktu_mesai' || strpos($kAdiKucuk, 'maktu') !== false || strpos($kAdiKucuk, 'mesai') !== false) {
+                $raporSutun = 'maktu_mesai';
+            } elseif ($gelirTuru === 'armagan_maas' || (strpos($kAdiKucuk, 'armağan') !== false && strpos($kAdiKucuk, 'maaş') !== false)) {
+                $raporSutun = 'maas_a';
+            }
+
+            if ($raporVarMi) {
+                if ($raporSutun === 'maas_o' || $raporSutun === 'maas_a') {
+                    $db->prepare("UPDATE `aylik_harcama_raporu` SET `{$raporSutun}` = ? WHERE `donem` = ?")->execute([$odenenTutar, $aktifDonem]);
+                } else {
+                    $db->prepare("UPDATE `aylik_harcama_raporu` SET `{$raporSutun}` = `{$raporSutun}` + ? WHERE `donem` = ?")->execute([$odenenTutar, $aktifDonem]);
+                }
+            } else {
+                $db->prepare("INSERT INTO `aylik_harcama_raporu` (donem, {$raporSutun}) VALUES (?, ?)")->execute([$aktifDonem, $odenenTutar]);
+            }
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'SQL Mühürleme Hatası: ' . $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'gider_ode') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $id          = intval($_POST['id'] ?? 0);
+        $odenenTutar = floatval(str_replace(',', '.', $_POST['odenen_tutar'] ?? 0));
+        $havuzKodu   = trim($_POST['havuz_kodu'] ?? ''); // Ön yüzden (hizadaki selectboxtan) gelen anlık seçim
+        $aktifDonem  = $_SESSION['aktif_donem'] ?? date('Y-m');
+
+        if ($id <= 0 || $odenenTutar <= 0) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Geçersiz bütçe ID veya tutar girdisi!']); exit;
+        }
+
+        try {
+            $db->beginTransaction();
+
+            // 1. ADIM: Satır durumunu ve name anahtarını tek hamlede çekiyoruz
+            $kalemSorgu = $db->prepare("SELECT id, kalem_adi, name, havuz_kodu, is_locked, turu FROM butce_akis WHERE id = ? LIMIT 1");
+            $kalemSorgu->execute([$id]);
+            $kalem = $kalemSorgu->fetch(PDO::FETCH_ASSOC);
+
+            if (!$kalem || $kalem['turu'] !== 'gider') { throw new Exception("Gider cetvelinde bu kayda ulaşılamadı!"); }
+            if (intval($kalem['is_locked']) === 1) { throw new Exception("Bu gider kalemi daha önce zaten ödenmiş!"); }
+
+            $sysName = trim($kalem['name']); // maas_o, maas_a, internet, harcama_nakit vb.
+
+            // 🎯 REFORM BARİYERİ: Telefon faturası kalemi ana ödeme motorundan kesinlikle muaftır!
+            if ($sysName === 'telefon') {
+                throw new Exception("🔒 Telefon ödemeleri sadece özel (Ö) ve (A) sayaç butonları üzerinden yapılabilir.");
+            }
+
+            // 🎯 ROTASYON MATRİSİ 1: HARCAMA YAPILACAK KAYNAK HAVUZUN MUTLAK DOĞRU SEÇİMİ
+            // Öncelik: Eğer veritabanındaki satırda bir havuz mühürlüyse onu al, yoksa ön yüzden gelen anlık parametreyi seç!
+            $hedefHavuz = !empty($kalem['havuz_kodu']) ? trim($kalem['havuz_kodu']) : $havuzKodu;
+
+            // Sadece ŞABLON SABİTLERİ ( name alanları ) için havuz zorlaması yapılır!
+            if ($sysName === 'ev_kredisi') {
+                $hedefHavuz = 'isbank_o'; // Ev Kredisi her zaman İşbank Ö
+            } elseif ($sysName === 'kredi_karti_a' || $sysName === 'kredi_karti_o') {
+                $hedefHavuz = 'isbank_a'; // Kredi Kartları her zaman İşbank A
+            } elseif (in_array($sysName, ['elektrik', 'su', 'dogalgaz', 'internet'])) {
+                $hedefHavuz = 'vakif_o';   // Orijinal sabit faturalar her zaman Vakıfbank Ö
+            } elseif ($sysName === 'aidat') {
+                $hedefHavuz = 'nakit';     // Sabit konut aidatı her zaman Nakit
+            }
+            // 🎯 KESİN REFORM: Eğer $sysName === 'harcama_nakit' ise (yani alt satırdan eklenen dinamik harcamalarda)
+            // yukarıdaki if bloklarına ASLA girmez; veritabanında selectboxtan ne kaydedildiyse (`$hedefHavuz`) kuruşu kuruşuna o kalır!
+
+            if (empty($hedefHavuz)) { $hedefHavuz = 'isbank_a'; } // Emniyet barajı
+            $is_nergiz = ($sysName === 'nergiz_cep');
+
+            if (!$is_nergiz) {
+                // 2. ADIM: KASADAKİ LİKİDİTE KONTROLÜ VE BLOKAJ ( Tam Hedeflenen Havuz Taranır )
+                $havuzKontrol = $db->prepare("SELECT havuz_adi, anapara FROM finansal_havuzlar WHERE havuz_kodu = ? LIMIT 1");
+                $havuzKontrol->execute([$hedefHavuz]);
+                $havuzRow = $havuzKontrol->fetch(PDO::FETCH_ASSOC);
+
+                if (!$havuzRow) { throw new Exception("Sistemde '{$hedefHavuz}' koduna ait finansal havuz bulunamadı!"); }
+
+                $mevcutBakiye = floatval($havuzRow['anapara']);
+                if ($mevcutBakiye < $odenenTutar) {
+                    throw new Exception("❌ Ödeme Reddedildi! {$havuzRow['havuz_adi']} hesabınızda yeterli bakiye yok.\nMevcut Bakiye: " . number_format($mevcutBakiye, 2, ',', '.') . " ₺");
+                }
+
+                // 3. ADIM: SAF SQL MATRAH AŞINDIRMA MOTORU (-)
+                $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara - ? WHERE havuz_kodu = ?")
+                   ->execute([$odenenTutar, $hedefHavuz]);
+            }
+
+            // 4. ADIM: butce_akis tablosunda satırı mühürle, kilitle ve o öz hakiki hedef havuz kodunu yaz!
+            $db->prepare("UPDATE butce_akis SET odenen_tutar = ?, is_locked = 1, odenme_tarihi = NOW(), havuz_kodu = ? WHERE id = ?")
+               ->execute([$odenenTutar, $hedefHavuz, $id]);
+
+            // 5. ADIM: aylik_harcama_raporu TABLOSU SAF SENKRONİZASYONU
+            if (!$is_nergiz) {
+                $raporKontrol = $db->prepare("SELECT COUNT(*) FROM aylik_harcama_raporu WHERE donem = ?");
+                $raporKontrol->execute([$aktifDonem]);
+                $raporVarMi = (intval($raporKontrol->fetchColumn()) > 0);
+
+                $raporSutun = $sysName; // Dinamik harcamalarda tam karşılığı olan 'harcama_nakit' sütununa işlenir
+
+                if ($raporVarMi) {
+                    $db->prepare("UPDATE `aylik_harcama_raporu` SET `{$raporSutun}` = `{$raporSutun}` + ? WHERE `donem` = ?")
+                       ->execute([$odenenTutar, $aktifDonem]);
+                } else {
+                    $db->prepare("INSERT INTO `aylik_harcama_raporu` (donem, `{$raporSutun}`) VALUES (?, ?)")
+                       ->execute([$aktifDonem, $odenenTutar]);
+                }
+            }
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => "Gider Ödeme Hatası: " . $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'damacana_ode') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $su_id       = intval($_POST['id'] ?? ($_POST['damacana_id'] ?? 0));
+        $birim_fiyat = floatval($_POST['birim_fiyat'] ?? 140);
+        $yon         = trim($_POST['yon'] ?? '');
+
+
+        // 🎯 REFORM 1: Parametre ismi kayıp veya sıfır gelse dahi,
+        // name anahtarı ve Kalem Adı üzerinden gerçek satırı bulma zırhı!
+        if ($su_id <= 0) {
+            $idKurtar = $db->prepare("SELECT id FROM butce_akis WHERE aktif_donem = ? AND turu = 'gider' AND name = 'harcama_nakit' AND (kalem_adi LIKE '%Damacana%' OR kalem_adi LIKE '%damacana%') LIMIT 1");
+            $idKurtar->execute([$aktif_donem]);
+            $su_id = intval($idKurtar->fetchColumn());
+        }
+
+        if ($su_id <= 0) {
+            ob_clean();
+            echo json_encode(['status' => 'error', 'message' => 'Parametre Hatası: Veritabanında Damacana Su satırı bulunamadı!']);
+            exit;
+        }
+
+        try {
+            // Veritabanından mühürlü gerçek su bütçesini anlık çekiyoruz
+            $stmt = $db->prepare("SELECT tutar FROM butce_akis WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $su_id]);
+            $su_row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$su_row) { 
+                ob_clean(); 
+                echo json_encode(['status' => 'error', 'message' => 'Bütçe akış cetvelinde bu su kalemi bulunamadı!']); 
+                exit; 
+            }
+
+            // --- YÖN +1 SÜRECİ (İPTAL / İADE AKSİYONU) ---
+            if ($yon === '+1') {
+                $db->beginTransaction();
+
+                // 1. Matrah Mühürü: butce_akis tablosundaki bütçeyi geri arttır
+                $db->prepare("UPDATE butce_akis SET tutar = tutar + :fiyat WHERE id = :id")
+                   ->execute(['fiyat' => $birim_fiyat, 'id' => $su_id]);
+
+                // 2. Matrah Mühürü: Nakit (Ev) anaparasını fiziksel olarak geri iade et (+)
+                $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + ? WHERE havuz_kodu = 'nakit'")
+                   ->execute([$birim_fiyat]);
+
+                $db->commit();
+                ob_clean(); echo json_encode(['status' => 'success']); exit;
+            }
+
+            // --- YÖN -1 SÜRECİ (SU SİPARİŞİ / KASADAN NET ERİME) ---
+            if ($yon === '-1') {
+                $mevcut_su_butcesi = floatval($su_row['tutar']);
+                if ($mevcut_su_butcesi < $birim_fiyat) { 
+                    throw new Exception("⚠️ Kalan damacana su bütçeniz tükenmiştir! Sipariş verilemez."); 
+                }
+
+                $db->beginTransaction();
+
+                // NAKİT KASASINDA FİZİKSEL PARA VAR MI KONTROLÜ
+                $nakitKontrol = $db->prepare("SELECT anapara FROM finansal_havuzlar WHERE havuz_kodu = 'nakit' LIMIT 1");
+                $nakitKontrol->execute();
+                $nakitRow = $nakitKontrol->fetch(PDO::FETCH_ASSOC);
+                $mevcutNakit = floatval($nakitRow['anapara'] ?? 0);
+
+                if ($mevcutNakit < $birim_fiyat) {
+                    throw new Exception("❌ Ödeme Reddedildi! Nakit (Ev) havuzunda yeterli para kalmadı.\nMevcut Nakit: " . number_format($mevcutNakit, 2, ',', '.') . " ₺");
+                }
+
+                // 1. Matrah Mühürü: butce_akis tablosundaki su bütçesini azalt (Kalan Su 140 TL eksilir)
+                $yeni_tutar = max(0, $mevcut_su_butcesi - $birim_fiyat);
+                $db->prepare("UPDATE butce_akis SET tutar = :yeni_tutar, odenme_tarihi = NOW() WHERE id = :id")
+                   ->execute(['yeni_tutar' => $yeni_tutar, 'id' => $su_id]);
+
+                // 2. Matrah Mühürü: Nakit (Ev) anaparasını fiziksel olarak aşındır (-)
+                $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara - ? WHERE havuz_kodu = 'nakit'")
+                   ->execute([$birim_fiyat]);
+
+                // 3. Matrah Mühürü: aylik_harcama_raporu tablosundaki harcama_nakit sütununu kümülatif büyüt (+)
+                $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")
+                   ->execute(['donem' => $aktif_donem]);
+                $db->prepare("UPDATE `aylik_harcama_raporu` SET `harcama_nakit` = `harcama_nakit` + :fiyat WHERE `donem` = :donem")
+                   ->execute(['fiyat' => $birim_fiyat, 'donem' => $aktif_donem]);
+
+                $db->commit();
+                ob_clean(); echo json_encode(['status' => 'success']); exit;
             }
             
-            // 🏦 İŞ BANKASI KREDİ KARTI ÖDEME ANINDA CANLI BORÇ KİLİTLEME VE ANINDA ERKEN ÇIKIŞ
-            if (strpos($isim, 'İşbank') !== false && strpos($isim, 'KK') !== false) {
-                $cc = $db->query("SELECT donem_ici, provizyon, doviz_borcu, kesinlesen_ekstre FROM kredi_kartlari WHERE kart_adi='isbank'")->fetch(PDO::FETCH_ASSOC);
-                $t_tutar = $db->query("SELECT isbank_tutar FROM cc_taksitler WHERE ay_index = $aktif_ay_index")->fetchColumn();
-                $kilitlenecek_tutar = floatval($cc['donem_ici'] ?? 0) + floatval($cc['provizyon'] ?? 0) + floatval($cc['doviz_borcu'] ?? 0) + floatval($cc['kesinlesen_ekstre'] ?? 0) + floatval($t_tutar);
-                if ($kilitlenecek_tutar <= 0) { $kilitlenecek_tutar = 68000.00; }
-                
-                $db->prepare("UPDATE butce_akis SET odenen_tutar = :odenen, odenme_tarihi = NOW() WHERE id = :id")->execute(['odenen' => $kilitlenecek_tutar, 'id' => $id]);
-                $db->query("UPDATE kredi_kartlari SET donem_ici = 0.00, provizyon = 0.00, doviz_borcu = 0.00, kesinlesen_ekstre = 0.00 WHERE kart_adi = 'isbank'");
-                $db->query("UPDATE cc_taksitler SET isbank_tutar = 0.00 WHERE ay_index = $aktif_ay_index");
-                
-                $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
-                $db->prepare("UPDATE `aylik_harcama_raporu` SET `kredi_karti_a` = `kredi_karti_a` + :t_tutar WHERE `donem` = :donem")->execute(['t_tutar' => $kilitlenecek_tutar, 'donem' => $aktif_donem]);
-                echo json_encode(['status' => 'success']); 
-                exit;
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'telefon_ode') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $tel_id      = intval($_POST['id'] ?? 0);
+        $birim_fiyat = floatval($_POST['birim_fiyat'] ?? 340);
+
+
+        if ($tel_id <= 0 || $birim_fiyat <= 0) {
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Geçersiz parametre!']); exit;
+        }
+
+        $stmt = $db->prepare("SELECT tutar, odenen_tutar FROM butce_akis WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $tel_id]);
+        $tel_row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$tel_row) { ob_clean(); echo json_encode(['status' => 'error', 'message' => 'Kayıt bulunamadı!']); exit; }
+
+        try {
+            $orijinal_plan_tutari = floatval($tel_row['tutar']); // 680 TL Sabit Kalır
+            $mevcut_odenen_matrah = floatval($tel_row['odenen_tutar']);
+
+            // EMNİYET BARİYERİ: Eğer zaten iki adım da ödendiyse (680 TL) yeni basışı bloke et
+            if ($mevcut_odenen_matrah >= $orijinal_plan_tutari) {
+                throw new Exception("🔒 Bu döneme ait tüm telefon ödeme adımları tamamlanmıştır.");
             }
 
-            // Standart Maaş, Fatura veya Harici Giderlerin kilitlenme lojiği
-            $db->prepare("UPDATE butce_akis SET odenen_tutar = :odenen, odenme_tarihi = NOW() WHERE id = :id")->execute(['odenen' => $kilitlenecek_tutar, 'id' => $id]);
+            $db->beginTransaction();
+
+            // Vakıfbank Ö kasasında para var mı kontrolü
+            $vakifKontrol = $db->query("SELECT anapara FROM finansal_havuzlar WHERE havuz_kodu = 'vakif_o' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            $mevcutVakif = floatval($vakifKontrol['anapara'] ?? 0);
+
+            if ($mevcutVakif < $birim_fiyat) {
+                throw new Exception("❌ Ödeme Reddedildi! Vakıfbank (Ö) hesabınızda yeterli bakiye yok.");
+            }
+
+            // 🎯 MÜHÜR 1: tutar sütunu asla eksilmez! odenen_tutar her basışta +340 TL eklenerek büyür.
+            $yeni_odenen = $mevcut_odenen_matrah + $birim_fiyat;
+
+            // Eğer bu harcamayla beraber toplam ödenen plan tutarına ulaştıysa satır is_locked=1 ile mühürlenir
+            $is_locked = ($yeni_odenen >= $orijinal_plan_tutari) ? 1 : 0;
+
+            $db->prepare("UPDATE butce_akis SET odenen_tutar = ?, is_locked = ?, odenme_tarihi = NOW(), havuz_kodu = 'vakif_o' WHERE id = ?")
+               ->execute([$yeni_odenen, $is_locked, $tel_id]);
+
+            // 🎯 MÜHÜR 2: Parayı doğrudan veritabanındaki Vakıfbank (Ö) kasasından düşüyoruz (-)
+            $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara - ? WHERE havuz_kodu = 'vakif_o'")->execute([$birim_fiyat]);
+
+            // 🎯 MÜHÜR 3: Harcama raporundaki 'telefon' sütununu kümülatif büyüt (+)
             $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
+            $db->prepare("UPDATE `aylik_harcama_raporu` SET `telefon` = `telefon` + :fiyat WHERE `donem` = :donem")->execute(['fiyat' => $birim_fiyat, 'donem' => $aktif_donem]);
 
-            $h_sutun = ''; 
-            $is_fatura = false;
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
 
-            if (strpos($isim, 'Nergiz Cep') !== false) {
-                $h_sutun = ''; // Nergiz Öde hiçbir harcama matrisine yazılmaz
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'bakiye_devret') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+        $havuzKodu = trim($_POST['havuz_kodu'] ?? '');
+        $tutar     = floatval(str_replace(',', '.', $_POST['tutar'] ?? 0));
+
+        if (empty($havuzKodu) || $tutar <= 0) {
+            ob_clean(); 
+            echo json_encode(['status' => 'error', 'message' => 'Parametre Hatası: Eksik havuz kodu veya sıfırdan küçük tutar!']); 
+            exit;
+        }
+
+        try {
+            $db->beginTransaction();
+
+            // 1. ADIM: Hedef finansal havuzun sistemde var olduğunu kesin doğrula
+            $havuzKontrol = $db->prepare("SELECT id, havuz_adi FROM finansal_havuzlar WHERE havuz_kodu = ? LIMIT 1");
+            $havuzKontrol->execute([$havuzKodu]);
+            $havuzRow = $havuzKontrol->fetch(PDO::FETCH_ASSOC);
+
+            if (!$havuzRow) {
+                throw new Exception("Sistemde '{$havuzKodu}' koduna ait aktif bir finansal havuz cüzdanı bulunamadı!");
             }
-            elseif (strpos($isim, 'Özge') !== false && strpos($isim, 'Maaş') !== false)     $h_sutun = 'maas_o';
-            elseif (strpos($isim, 'Armağan') !== false && strpos($isim, 'Maaş') !== false)   $h_sutun = 'maas_a';
-            elseif (strpos($isim, 'Maktu') !== false || strpos($isim, 'Mesai') !== false)    $h_sutun = 'maktu_mesai';
-            elseif (strpos($isim, 'Kredi') !== false)                                         $h_sutun = 'ev_kredisi';
-            elseif (strpos($isim, 'Aidat') !== false)                                         $h_sutun = 'aidat';
-            elseif (strpos($isim, 'Elektrik') !== false)                                      { $h_sutun = 'elektrik'; $is_fatura = true; }
-            elseif (strpos($isim, 'Su Faturası') !== false || strpos($isim, 'İzsu') !== false) { $h_sutun = 'su'; $is_fatura = true; }
-            elseif (strpos($isim, 'Doğalgaz') !== false)                                      { $h_sutun = 'dogalgaz'; $is_fatura = true; }
-            elseif (strpos($isim, 'Telefon') !== false)                                       { $h_sutun = 'telefon'; $is_fatura = true; }
-            elseif (strpos($isim, 'İnternet') !== false)                                      { $h_sutun = 'internet'; $is_fatura = true; }
-            else {
-                if ($turu === 'gider') {
-                    $h_sutun = 'harcama_nakit'; 
-                } elseif ($turu === 'gelir') {
-                    if (strpos($isim, 'Fazla Ödeme') !== false || preg_match('/^[vny]/i', $k_kucuk)) {
-                        $h_sutun = 'ek_gelir';
-                    }
-                }
-            }
 
-            if ($h_sutun !== '') {
-                $db->prepare("UPDATE `aylik_harcama_raporu` SET `{$h_sutun}` = `{$h_sutun}` + :t_tutar WHERE `donem` = :donem")
-                   ->execute(['t_tutar' => $kilitlenecek_tutar, 'donem' => $aktif_donem]);
+            // 2. ADIM: 🎯 MÜHÜR: butce_akis tablosuna ve aylik_harcama_raporu tablosuna KESİNLİKLE müdahale edilmiyor!
+            // Para doğrudan veritabanındaki finansal_havuzlar tablosunda ilgili kasanın üzerine kümülatif eklenir (+).
+            $enjeksiyonSorgu = $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + ? WHERE havuz_kodu = ?");
+            $enjeksiyonSorgu->execute([$tutar, $havuzKodu]);
 
-                if ($is_fatura) {
-                    $db->prepare("UPDATE `aylik_harcama_raporu` SET `fatura_nakit` = `fatura_nakit` + :t_tutar WHERE `donem` = :donem")
-                       ->execute(['t_tutar' => $kilitlenecek_tutar, 'donem' => $aktif_donem]);
-                }
-            }
+            $db->commit();
+            ob_clean(); 
             echo json_encode(['status' => 'success']); 
+            exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); 
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); 
             exit;
         }
     }
 
-    // ⚙️ 7. İŞLEM: AKILLI DAMACANA SU SİPARİŞİ VE HARCAMA NAKİT MATRİS BAĞLANTISI
-    if ($islem === 'su_damacana_aksiyon') {
-        $birim_fiyat = floatval($_POST['birim_fiyat'] ?? 140);
-        $yon         = $_POST['yon'] ?? '';
-
-        $stmt = $db->prepare("SELECT tutar FROM butce_akis WHERE id = :id");
-        $stmt->execute(['id' => $id]);
-        $su_row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$su_row) { echo json_encode(['status' => 'error']); exit; }
-
-        if ($yon === '+1') {
-            $db->prepare("UPDATE butce_akis SET tutar = tutar + :fiyat WHERE id = :id")->execute(['fiyat' => $birim_fiyat, 'id' => $id]);
-            echo json_encode(['status' => 'success']); exit;
-        }
-
-        if ($yon === '-1') {
-            if (floatval($su_row['tutar']) < $birim_fiyat) { echo json_encode(['status' => 'error']); exit; }
-            $yeni_tutar = max(0, floatval($su_row['tutar']) - $birim_fiyat);
-            $db->prepare("UPDATE butce_akis SET tutar = :yeni_tutar, odenme_tarihi = NOW() WHERE id = :id")->execute(['yeni_tutar' => $yeni_tutar, 'id' => $id]);
-
-            $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
-            $db->prepare("UPDATE `aylik_harcama_raporu` SET `harcama_nakit` = `harcama_nakit` + :fiyat WHERE `donem` = :donem")->execute(['fiyat' => $birim_fiyat, 'donem' => $aktif_donem]);
-            echo json_encode(['status' => 'success']); exit;
-        }
-    }
-
-    // ⚙️ 8. İŞLEM: SİMÜLASYON ADIMLARINI VARSAYILAN DEĞERLERE SIFIRLAMA (TAM TEMİZLİK)
     if ($islem === 'simulasyon_sifirla') {
-        $db->prepare("UPDATE butce_akis SET odenen_tutar = 0.00, odenme_tarihi = NULL WHERE aktif_donem = :donem")->execute(['donem' => $aktif_donem]);
-        $db->prepare("UPDATE butce_akis SET tutar = 1120.00 WHERE aktif_donem = :donem AND (kalem_adi LIKE '%Damacana%' OR kalem_adi LIKE '%İçme Suyu%' OR kalem_adi LIKE '%damacana%')")->execute(['donem' => $aktif_donem]);
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
         
-        $db->prepare("
-            DELETE FROM butce_akis WHERE aktif_donem = :donem AND (
-                (turu = 'gider' AND kalem_adi NOT LIKE '%Maaş%' AND kalem_adi NOT LIKE '%Mesai%' AND kalem_adi NOT LIKE '%Maktu%' AND kalem_adi NOT LIKE '%KK%' AND kalem_adi NOT LIKE '%Kredi%' AND kalem_adi NOT LIKE '%Faturası%' AND kalem_adi NOT LIKE '%Damacana%' AND kalem_adi NOT LIKE '%İçme Suyu%' AND kalem_adi NOT LIKE '%Aidat%' AND kalem_adi NOT LIKE '%Nergiz Cep%' AND kalem_adi NOT LIKE '%İzsu%' AND kalem_adi NOT LIKE '%Elektrik%' AND kalem_adi NOT LIKE '%Su%' AND kalem_adi NOT LIKE '%Doğalgaz%' AND kalem_adi NOT LIKE '%Telefon%' AND kalem_adi NOT LIKE '%İnternet%') 
-                OR 
-                (turu = 'gelir' AND kalem_adi NOT LIKE '%Maaş%' AND kalem_adi NOT LIKE '%Maktu%')
-            )
-        ")->execute(['donem' => $aktif_donem]);
-        
-        $db->prepare("UPDATE `aylik_harcama_raporu` SET `maas_o`=0, `maas_a`=0, `maktu_mesai`=0, `ek_gelir`=0, `faiz_gelir`=0, `kredi_karti_o`=0, `kredi_karti_a`=0, `ev_kredisi`=0, `aidat`=0, `harcama_nakit`=0, `fatura_nakit`=0, `elektrik`=0, `su`=0, `dogalgaz`=0, `telefon`=0, `internet`=0 WHERE `donem` = :donem")->execute(['donem' => $aktif_donem]);
-        
-        // Faiz tablosundaki o aya ait tüm çoklu basım geçmişini siler
-        $db->prepare("DELETE FROM faiz_gelirleri WHERE donem = :donem")->execute(['donem' => $aktif_donem]);
 
-        // 🎯 REFORM: Sıfırlama anında hem bileşik bütçeyi hem de ham input bütçesini fabrika ayarlarına çek
-        $_SESSION['saf_kredi_input_butcesi'] = 53200.00;
-        $_SESSION['dinamik_faiz_kredi_butcesi'] = 53200.00;
-        
-        echo json_encode(['status' => 'success']); 
-        exit;
+
+        try {
+            $db->beginTransaction();
+
+            // 🎯 EMNİYET KALKANI: Sayısal verilerin sıfır veya dize hatası üretme riskine karşı mutlak floatval koruması
+            $saf_tel_tutar   = floatval(str_replace(',', '.', $aylikTelefonFaturasi));
+            $saf_damacana_tutar = floatval(str_replace(',', '.', $aylikDamacanaTutari));
+            $saf_ev_kredisi  = floatval(str_replace(',', '.', $evKredisiConst));
+            $saf_internet_tutar = floatval(str_replace(',', '.', $aylikInternetFaturasiTutari));
+
+            // 🎯 MÜHÜR 1: Tüm bütçe akış planının ödeme matrahlarını temizle (odenen_tutar = 0, is_locked = 0)
+            // Özel bütçeli sayaç alanlarının tutarlarını ezmemek için name kalkanları vurulmuştur.
+            $db->prepare("UPDATE butce_akis SET odenen_tutar = 0.00, odenme_tarihi = NULL, is_locked = 0 
+                          WHERE aktif_donem = :donem 
+                          AND name NOT IN ('telefon', 'harcama_nakit', 'internet')")
+               ->execute(['donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 2: TELEFON satırının bütçesini ve kilitlerini öz hakiki name alanı üzerinden mühürle
+            $db->prepare("UPDATE butce_akis SET tutar = :tel_butce, odenen_tutar = 0.00, is_locked = 0 
+                          WHERE aktif_donem = :donem AND name = 'telefon'")
+               ->execute(['tel_butce' => $saf_tel_tutar, 'donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 3: DAMACANA SU satırının bütçesini ve kilitlerini öz hakiki name alanı üzerinden mühürle
+            $db->prepare("UPDATE butce_akis SET tutar = :su_butce, odenen_tutar = 0.00, is_locked = 0 
+                          WHERE aktif_donem = :donem AND name = 'harcama_nakit' AND kalem_adi LIKE '%Damacana%'")
+               ->execute(['su_butce' => $saf_damacana_tutar, 'donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 3.5: İNTERNET satırının bütçesini ve kilitlerini öz hakiki name alanı üzerinden mühürle
+            $db->prepare("UPDATE butce_akis SET tutar = :net_butce, odenen_tutar = 0.00, is_locked = 0 
+                          WHERE aktif_donem = :donem AND name = 'internet'")
+               ->execute(['net_butce' => $saf_internet_tutar, 'donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 4: SONRADAN EKLENEN TÜM DİNAMİK EK GİDER VE GELİRLERİ VERİTABANINDAN TEMİZLE
+            $db->prepare("
+                DELETE FROM butce_akis 
+                WHERE aktif_donem = :donem 
+                AND (
+                    (turu = 'gider' AND (
+                        name NOT IN ('ev_kredisi', 'kredi_karti_a', 'kredi_karti_o', 'elektrik', 'su', 'dogalgaz', 'telefon', 'internet', 'aidat')
+                        AND kalem_adi NOT LIKE '%Damacana%'
+                        AND kalem_adi NOT LIKE '%damacana%'
+                        AND kalem_adi NOT LIKE '%Nergiz%'
+                    )) 
+                    OR 
+                    (turu = 'gelir' AND name NOT IN ('maas_o', 'maas_a', 'maktu_mesai'))
+                )
+            ")->execute(['donem' => $aktif_donem]);
+            // 🎯 MÜHÜR 5: Aylık harcama raporu tablosundaki tüm dikey sütunları kuruşu kuruşuna sıfırla
+            $db->prepare("UPDATE `aylik_harcama_raporu` SET `maas_o`=0, `maas_a`=0, `maktu_mesai`=0, `ek_gelir`=0, `faiz_gelir`=0, `kredi_karti_o`=0, `kredi_karti_a`=0, `ev_kredisi`=0, `aidat`=0, `harcama_nakit`=0, `fatura_nakit`=0, `elektrik`=0, `su`=0, `dogalgaz`=0, `telefon`=0, `internet`=0 WHERE `donem` = :donem")
+               ->execute(['donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 6: Faiz tablosundaki o aya ait tüm çoklu basım geçmişini temizle
+            $db->prepare("DELETE FROM faiz_gelirleri WHERE donem = :donem")
+               ->execute(['donem' => $aktif_donem]);
+
+            // 🎯 MÜHÜR 7: Finansal havuzların nemasını ve bloke tutarlarını sıfırla (Kasa anaparaları korunur) ANAPARA DÜZENLENEBİLİR
+            $db->query("UPDATE finansal_havuzlar SET anapara = 0.000, nema = 0.0000, bloke_tutar = 0.0000");
+            //$db->query("UPDATE finansal_havuzlar SET nema = 0.0000, bloke_tutar = 0.0000");
+
+            // Kredi faiz input bütçelerini fabrika ayarlarına çek
+            $_SESSION['evKredisiHam'] = $evKredisiConst;
+            $_SESSION['evKredisiFaizliNetTutar'] = $saf_ev_kredisi;
+            $_SESSION['dinamik_faiz_gun_sayisi'] = 0;
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => "SQL Motor Hatası: " . $e->getMessage()]); exit;
+        }
     }
 
-    // ⚙️ 9. İŞLEM: EVDEKİ NAKİT AKTARMA MOTORU
-    if ($islem === 'evdeki_nakit_aktar') {
-        $tutar = floatval($_POST['tutar'] ?? 0);
-        if ($tutar > 0) {
-            $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu) VALUES (:donem, 'Evdeki Nakit Girişi', :tutar, :odenen, 'gelir')")
-               ->execute(['donem' => $aktif_donem, 'tutar' => $tutar, 'odenen' => $tutar]);
-            echo json_encode(['status' => 'success']);
-        } else { echo json_encode(['status' => 'error']); }
-        exit;
-    }
+    // sağ sütun
 
-    // ⚙️ 10. İŞLEM: NAKİT -> VAKIF SAF LİKİDİTE AKTARMA MOTORU
-    if ($islem === 'vakif_nakit_aktar' || $islem === 'mavi_butondan_vakifa_aktar') {
-        $tutar = floatval($_POST['tutar'] ?? 0);
-        if ($tutar > 0) {
-            $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, is_locked) VALUES (:donem, 'Havuz Transfer Fonu (NAKIT -> VAKIF)', :tutar, :odenen, 'gelir', 0)")
-               ->execute(['donem' => $aktif_donem, 'tutar' => $tutar, 'odenen' => $tutar]);
-            $db->prepare("INSERT IGNORE INTO `aylik_harcama_raporu` (`donem`) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
-            echo json_encode(['status' => 'success']);
-        } else { echo json_encode(['status' => 'error']); }
-        exit;
-    }
+    if ($islem === 'faiz_hesapla') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
 
-    // ⚙️ 11. İŞLEM: NERGİZ CEP ÖDEME MOTORU
-    if ($islem === 'nergiz_cep_ode') {
-        $db->prepare("UPDATE butce_akis SET odenen_tutar = 220.00, odenme_tarihi = NOW() WHERE aktif_donem = :donem AND kalem_adi = 'Nergiz Cep'")->execute(['donem' => $aktif_donem]);
-        echo json_encode(['status' => 'success']); 
-        exit;
-    }
+        // 1. ADIM: AJAX post paketinden süzülen en taze anlık sayıları yakalıyoruz
+        $anlikHam  = isset($_POST['evKredisiHam']) ? floatval($_POST['evKredisiHam']) : $evKredisiHam;
+        $anlikOran = isset($_POST['faiz_orani']) ? floatval($_POST['faiz_orani']) : $faiz_orani;
+        $anlikGun  = isset($_POST['faiz_gun_sayisi']) ? intval($_POST['faiz_gun_sayisi']) : $faiz_gun_sayisi;
 
-    // 🏛️ 12. İŞLEM: ÇOKLU BASIM DESTEKLİ BİLEŞİK FAİZ AKTARMA MOTORU
-    if ($islem === 'faiz_aktar') {
-        // 1. Gelişmiş Net Faiz Hesaplama Parametreleri
-        $oran   = $faiz_orani;
-        $gun    = $faiz_gun_sayisi;
-        $stopaj = $faiz_stopaj;
+        try {
+            $db->beginTransaction();
 
-        // 🎯 REFORM 1: Hayali veritabanı sorguları ve harcamaları görmeyen eski formüller TAMAMEN SİLİNDİ!
-        // Döngünün (Blok 2) harcamaları, kartları ve transferleri düşerek bulduğu EN GÜNCEL REEL ANAPARALARI doğrudan matrah yap!
-        $safIsbankAanapara = max(0, $isbank_a_anapara);
-        $safIsbankOanapara = max(0, $isbank_o_anapara);
+            // 2. ADIM: 🎯 Veritabanından İşbank Ö ve İşbank A cüzdanlarının canlı anapara tutarlarını çekiyoruz
+            $havuzSorgu = $db->query("SELECT havuz_kodu, anapara FROM finansal_havuzlar WHERE havuz_kodu IN ('isbank_o', 'isbank_a')");
+            $havuzlar = $havuzSorgu->fetchAll(PDO::FETCH_ASSOC);
 
-        // Kredinin ödenme durumunu kontrol ediyoruz
-        $stmtKredi = $db->prepare("SELECT odenen_tutar FROM butce_akis WHERE aktif_donem = :donem AND kalem_adi LIKE '%Kredi%' AND turu='gider' LIMIT 1");
-        $stmtKredi->execute(['donem' => $aktif_donem]);
-        $rowKredi = $stmtKredi->fetch(PDO::FETCH_ASSOC);
-        $krediOdediMiCanli = $rowKredi ? (floatval($rowKredi['odenen_tutar']) > 0) : false;
+            $isbank_o_anapara = 0.00;
+            $isbank_a_anapara = 0.00;
 
-        // 2. Canlı Faiz Üretim Denklemleri (Gerçekleşen Canlı Anapara Üzerinden)
-        $safIsbankABrutFaiz = ($safIsbankAanapara > 0) ? ($safIsbankAanapara * ($oran / 100) / 365) * $gun : 0;
-        $anlik_net_faiz_a   = $safIsbankABrutFaiz * (1 - ($stopaj / 100));
+            foreach ($havuzlar as $havuz) {
+                if ($havuz['havuz_kodu'] === 'isbank_o') $isbank_o_anapara = floatval($havuz['anapara']);
+                if ($havuz['havuz_kodu'] === 'isbank_a') $isbank_a_anapara = floatval($havuz['anapara']);
+            }
 
-        $safIsbankOBrutFaiz = ($safIsbankOanapara > 0 && !$krediOdediMiCanli) ? ($safIsbankOanapara * ($oran / 100) / 365) * $gun : 0;
-        $anlik_net_faiz_o   = $safIsbankOBrutFaiz * (1 - ($stopaj / 100));
+ 
+            $isbank_o_nema = netFaizHesapla($isbank_o_anapara, $anlikOran, $anlikGun, $faiz_stopaj);
+            $isbank_a_nema = netFaizHesapla($isbank_a_anapara, $anlikOran, $anlikGun, $faiz_stopaj);
+            $evKredisiFaizliNetTutar = 0;
 
-        $toplam_aktarilacak_faiz = $anlik_net_faiz_a + $anlik_net_faiz_o;
 
-        if ($toplam_aktarilacak_faiz > 0) {
+            // 4. ADIM: 🎯 SAF SQL MÜHÜRLEME MOTORU (Nemalar cüzdanlara işleniyor)
+            $nemaMühürÖ = $db->prepare("UPDATE finansal_havuzlar SET nema = ? WHERE havuz_kodu = 'isbank_o'");
+            $nemaMühürÖ->execute([$isbank_o_nema]);
+
+            $nemaMühürA = $db->prepare("UPDATE finansal_havuzlar SET nema = ? WHERE havuz_kodu = 'isbank_a'");
+            $nemaMühürA->execute([$isbank_a_nema]);
+
+            // 5. ADIM: Gelecek sayfa yüklemeleri ve View katmanı için tüm session hafızasını tazeleyin
+            $_SESSION['evKredisiHam']              = $anlikHam;
+            $_SESSION['dinamik_faiz_orani']        = $anlikOran;
+            $_SESSION['dinamik_faiz_gun_sayisi']   = $anlikGun;
             
-            $db->prepare("INSERT INTO faiz_gelirleri (donem, faizgeliri_a, faizgeliri_o, tarih) VALUES (:donem, :faiz_a, :faiz_o, NOW())")->execute([
-                'donem'  => $aktif_donem, 
-                'faiz_a' => $anlik_net_faiz_a, 
-                'faiz_o' => $anlik_net_faiz_o
+            $_SESSION['isbank_o_nema']             = $isbank_o_nema;
+            $_SESSION['isbank_a_nema']             = $isbank_a_nema;
+            $_SESSION['evKredisiFaizliNetTutar']   = $evKredisiFaizliNetTutar; // Korumaya alındı
+
+            $db->commit();
+            ob_clean(); 
+            echo json_encode(['status' => 'success', 'ev_kredisi_net' => $evKredisiFaizliNetTutar]); 
+            exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); 
+            echo json_encode(['status' => 'error', 'message' => 'Nema Hesaplama SQL Hatası: ' . $e->getMessage()]); 
+            exit;
+        }
+    }
+
+    if ($islem === 'faiz_aktar') {
+        while (ob_get_level()) { ob_end_clean(); } ob_start();
+        header('Content-Type: application/json; charset=utf-8');
+
+
+
+        try {
+            $db->beginTransaction();
+
+            // 1. ADIM: Veritabanından İşbank Ö ve İşbank A cüzdanlarının güncel canlı NEMA değerlerini çekiyoruz
+            $havuzSorgu = $db->query("SELECT havuz_kodu, anapara, nema FROM finansal_havuzlar WHERE havuz_kodu IN ('isbank_o', 'isbank_a')");
+            $havuzlar = $havuzSorgu->fetchAll(PDO::FETCH_ASSOC);
+
+            $nema_o = 0.00;
+            $nema_a = 0.00;
+
+            foreach ($havuzlar as $havuz) {
+                if ($havuz['havuz_kodu'] === 'isbank_o') $nema_o = floatval($havuz['nema'] ?? 0);
+                if ($havuz['havuz_kodu'] === 'isbank_a') $nema_a = floatval($havuz['nema'] ?? 0);
+            }
+
+            $toplam_aktarilacak_nema = $nema_o + $nema_a;
+
+            // Emniyet Bariyeri: Eğer iki kasada da birikmiş canlı bir nema yoksa aktarımı bloke et
+            if ($toplam_aktarilacak_nema <= 0) {
+                throw new Exception("⚠️ Cüzdanlarınızda aktarılacak aktif bir canlı faiz (nema) geliri birikmemiştir!");
+            }
+
+            // 2. ADIM: 🎯 SAF SQL MATRAH BİLEŞTİRME MOTORU
+            // Nemaları anaparanın üzerine ekliyoruz ve nema hücresini kuruşu kuruşuna 0.0000 yapıyoruz!
+            $db->query("UPDATE finansal_havuzlar SET anapara = anapara + nema, nema = 0.0000 WHERE havuz_kodu IN ('isbank_o', 'isbank_a')");
+
+            // 3. ADIM: 🎯 Arşiv kaydı için faiz_gelirleri tablosuna işlem mühürünü vuruyoruz
+            $faizKayit = $db->prepare("INSERT INTO faiz_gelirleri (donem, faizgeliri_a, faizgeliri_o, tarih) VALUES (?, ?, ?, NOW())");
+            $faizKayit->execute([$aktif_donem, $nema_a, $nema_o]);
+
+            // 4. ADIM: 🎯 Bütçe akış planına (butce_akis) kilitli gelir belgelerini mühürlüyoruz
+            // Not: Her faiz aktarımında yeni belge satırı eklenir (Mükerrerlik oluşturmaz, ek gelirdir)
+            if ($nema_a > 0) {
+                $insA = $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, turu, name, tutar, odenen_tutar, islem_gunu, odenme_tarihi, is_locked, havuz_kodu) VALUES (?, 'İşbank (A) Faiz Geliri', 'gelir', 'ek_gelir', ?, ?, ?, NOW(), 1, 'isbank_a')");
+                $insA->execute([$aktif_donem, $nema_a, $nema_a, intval(date('d'))]);
+            }
+
+            if ($nema_o > 0) {
+                $insO = $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, turu, name, tutar, odenen_tutar, islem_gunu, odenme_tarihi, is_locked, havuz_kodu) VALUES (?, 'İşbank (Ö) Faiz Geliri', 'gelir', 'ek_gelir', ?, ?, ?, NOW(), 1, 'isbank_o')");
+                $insO->execute([$aktif_donem, $nema_o, $nema_o, intval(date('d'))]);
+                
+                // Faiz bütçesini bileşik büyüterek orijinal session hattına da mühür vuruyoruz
+                if (isset($_SESSION['evKredisiFaizliNetTutar'])) {
+                    $_SESSION['evKredisiFaizliNetTutar'] += $nema_o;
+                }
+            }
+
+            // 5. ADIM: 🎯 aylik_harcama_raporu tablosundaki faiz_gelir sütununu KÜMÜLATİF büyütüyoruz (+=)
+            $raporKontrol = $db->prepare("SELECT COUNT(*) FROM aylik_harcama_raporu WHERE donem = ?");
+            $raporKontrol->execute([$aktif_donem]);
+            $raporVarMi = (intval($raporKontrol->fetchColumn()) > 0);
+
+            if ($raporVarMi) {
+                // Birden fazla faiz geliri alabilmeniz için kuruşu kuruşuna kümülatif artı (+=) yönlü büyütülür
+                $db->prepare("UPDATE `aylik_harcama_raporu` SET `faiz_gelir` = `faiz_gelir` + ? WHERE `donem` = ?")
+                ->execute([$toplam_aktarilacak_nema, $aktif_donem]);
+            } else {
+                $db->prepare("INSERT INTO `aylik_harcama_raporu` (donem, `faiz_gelir`) VALUES (?, ?)")
+                ->execute([$aktif_donem, $toplam_aktarilacak_nema]);
+            }
+
+            // Sayfa yenilendiğinde eski nemaların ekranda hayalet gibi kalmaması için session'ları sıfırlıyoruz
+            $_SESSION['isbank_o_nema'] = 0.00;
+            $_SESSION['isbank_a_nema'] = 0.00;
+            $_SESSION['dinamik_faiz_gun_sayisi'] = 0;
+
+            $faiz_gun_sayisi = $_SESSION['dinamik_faiz_gun_sayisi'];
+
+            $db->commit();
+            ob_clean(); echo json_encode(['status' => 'success']); exit;
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            ob_clean(); echo json_encode(['status' => 'error', 'message' => $e->getMessage()]); exit;
+        }
+    }
+
+    if ($islem === 'mevduat_transfer') {
+        
+        // Temiz çıktı için tamponu temizleyelim (Mevcut controller mimarinizdeki standart koruma)
+        if (ob_get_level() > 0) { ob_clean(); }
+        header('Content-Type: application/json; charset=utf-8');
+
+        // Gelen Parametrelerin Alınması ve Filtrelenmesi
+        $kaynak_havuz = filter_var($_POST['kaynak_havuz'] ?? '', FILTER_SANITIZE_SPECIAL_CHARS);
+        $hedef_havuz  = filter_var($_POST['hedef_havuz'] ?? '', FILTER_SANITIZE_SPECIAL_CHARS);
+        $cozum_turu   = filter_var($_POST['cozum_turu'] ?? '', FILTER_SANITIZE_SPECIAL_CHARS);
+        $destek_havuz = filter_var($_POST['destek_havuz'] ?? '', FILTER_SANITIZE_SPECIAL_CHARS);
+        
+        // Önyüzden gelen ham para formatını float türüne dönüştürme
+        $toplam_talep_tutari = floatval($_POST['toplam_talep_tutari'] ?? 0);
+
+        // Temel Güvenlik Bariyeri
+        if (empty($kaynak_havuz) || empty($hedef_havuz) || $toplam_talep_tutari <= 0 || $kaynak_havuz === $hedef_havuz) {
+            echo json_encode(['success' => false, 'message' => 'Geçersiz parametreler veya hatalı transfer tutarı!']);
+            exit;
+        }
+
+        try {
+            // Matematiksel bir hata durumunda havuzları korumak için Transaction Başlatıyoruz
+            $db->beginTransaction();
+
+            // 1. Kaynak Havuzun Güncel Veritabanı Anaparasını Çekelim
+            // Krtitik Düzeltme: havuz_anahtari -> havuz_kodu yapıldı
+            $stmt = $db->prepare("SELECT anapara FROM finansal_havuzlar WHERE havuz_kodu = :kod LIMIT 1");
+            $stmt->execute([':kod' => $kaynak_havuz]);
+            $kaynak_data = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$kaynak_data) {
+                throw new Exception("Kaynak havuz veritabanında bulunamadı!");
+            }
+
+            $kaynak_mevcut_anapara = floatval($kaynak_data['anapara']);
+
+            // Matematiksel Hesaplama Değişkenleri
+            $ana_transfer_tutari = 0.00;
+            $destek_transfer_tutari = 0.00;
+            $toplam_aktarilan = 0.00;
+
+            // 2. Senaryo Yönetim Matrisi
+            if ($cozum_turu === 'yeterli') {
+                if ($kaynak_mevcut_anapara < $toplam_talep_tutari) {
+                    throw new Exception("Kaynak havuz bakiyesi yetersiz! Lütfen sayfayı yenileyip tekrar deneyin.");
+                }
+                $ana_transfer_tutari = $toplam_talep_tutari;
+                $toplam_aktarilan    = $toplam_talep_tutari;
+
+            } elseif ($cozum_turu === 'sadece_mevcut') {
+                if ($kaynak_mevcut_anapara <= 0) {
+                    throw new Exception("Kaynak havuzda aktarılacak bakiye yok!");
+                }
+                $ana_transfer_tutari = $kaynak_mevcut_anapara;
+                $toplam_aktarilan    = $kaynak_mevcut_anapara;
+
+            } elseif ($cozum_turu === 'destekli') {
+                if (empty($destek_havuz) || $destek_havuz === $kaynak_havuz || $destek_havuz === $hedef_havuz) {
+                    throw new Exception("Geçersiz destek havuz seçimi!");
+                }
+
+                // Destek havuzun anaparasını sorgulayalım
+                // Krtitik Düzeltme: havuz_anahtari -> havuz_kodu yapıldı
+                $stmtDestek = $db->prepare("SELECT anapara FROM finansal_havuzlar WHERE havuz_kodu = :kod LIMIT 1");
+                $stmtDestek->execute([':kod' => $destek_havuz]);
+                $destek_data = $stmtDestek->fetch(PDO::FETCH_ASSOC);
+
+                if (!$destek_data) {
+                    throw new Exception("Destek havuz veritabanında bulunamadı!");
+                }
+
+                $destek_mevcut_anapara = floatval($destek_data['anapara']);
+                $eksik_tutar = $toplam_talep_tutari - $kaynak_mevcut_anapara;
+
+                if ($destek_mevcut_anapara < $eksik_tutar) {
+                    throw new Exception("Destek havuzunun bakiyesi de eksik tutarı kapatmaya yetmiyor!");
+                }
+
+                // Paylaşımlı transfer dağılımı
+                $ana_transfer_tutari    = $kaynak_mevcut_anapara; 
+                $destek_transfer_tutari = $eksik_tutar;
+                $toplam_aktarilan       = $toplam_talep_tutari;
+
+            } else {
+                throw new Exception("Bilinmeyen transfer çözüm türü!");
+            }
+
+            // 3. Veritabanı Güncelleme Operasyonları (UPDATE)
+            // Krtitik Düzeltmeler: havuz_anahtari -> havuz_kodu yapıldı
+            
+            // A) Kaynak havuzdan parayı düş
+            if ($ana_transfer_tutari > 0) {
+                $upKaynak = $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara - :tutar WHERE havuz_kodu = :kod");
+                $upKaynak->execute([':tutar' => $ana_transfer_tutari, ':kod' => $kaynak_havuz]);
+            }
+
+            // B) Varsa Destek havuzdan eksiği düş
+            if ($destek_transfer_tutari > 0) {
+                $upDestek = $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara - :tutar WHERE havuz_kodu = :kod");
+                $upDestek->execute([':tutar' => $destek_transfer_tutari, ':kod' => $destek_havuz]);
+            }
+
+            // C) Hedef havuza toplam parayı ekle
+            if ($toplam_aktarilan > 0) {
+                $upHedef = $db->prepare("UPDATE finansal_havuzlar SET anapara = anapara + :tutar WHERE havuz_kodu = :kod");
+                $upHedef->execute([':tutar' => $toplam_aktarilan, ':kod' => $hedef_havuz]);
+            }
+
+            // 4. Akıllı Log Sistemini Besleme (INSERT)
+            $logSql = "INSERT INTO transfer_logs 
+                        (donem, kaynak_havuz, destek_havuz, hedef_havuz, ana_transfer_tutari, destek_transfer_tutari, toplam_aktarilan, cozum_turu, tarih) 
+                    VALUES 
+                        (:donem, :kaynak, :destek, :hedef, :ana_tutar, :destek_tutar, :toplam, :cozum, NOW())";
+            
+            $logStmt = $db->prepare($logSql);
+            $logStmt->execute([
+                ':donem'        => $aktif_donem,
+                ':kaynak'       => $kaynak_havuz,
+                ':destek'       => !empty($destek_havuz) && $destek_transfer_tutari > 0 ? $destek_havuz : null,
+                ':hedef'        => $hedef_havuz,
+                ':ana_tutar'    => $ana_transfer_tutari,
+                ':destek_tutar' => $destek_transfer_tutari,
+                ':toplam'       => $toplam_aktarilan,
+                ':cozum'        => $cozum_turu
             ]);
 
-            if ($anlik_net_faiz_a > 0) {
-                $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, is_locked, odenme_tarihi) VALUES (:donem, 'y faizgeliri_a', :tutar, :odenen, 'gelir', 1, NOW())")->execute([
-                    'donem'  => $aktif_donem, 'tutar'  => $anlik_net_faiz_a, 'odenen' => $anlik_net_faiz_a
-                ]);
-            }
+            // İşlemleri taahhüt et ve kalıcı yap
+            $db->commit();
 
-            if ($anlik_net_faiz_o > 0) {
-                $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, is_locked, odenme_tarihi) VALUES (:donem, 'k faizgeliri_o', :tutar, :odenen, 'gelir', 1, NOW())")->execute([
-                    'donem'  => $aktif_donem, 'tutar'  => $anlik_net_faiz_o, 'odenen' => $anlik_net_faiz_o
-                ]);
-                
-                // Faiz cüzdanını bileşik büyüterek session'a mühürle
-                $_SESSION['dinamik_faiz_kredi_butcesi'] = $dinamik_faiz_kredi_butcesi + $anlik_net_faiz_o;
-            }
-
-            try {
-                $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                $db->prepare("INSERT IGNORE INTO aylik_harcama_raporu (donem) VALUES (:donem)")->execute(['donem' => $aktif_donem]);
-                $db->prepare("UPDATE aylik_harcama_raporu SET faiz_gelir = faiz_gelir + :faiz WHERE donem = :donem")->execute([
-                    'faiz'  => $toplam_aktarilacak_faiz, 'donem' => $aktif_donem
-                ]);
-            } catch (PDOException $e) {
-                exit("Veritabanı Hatası: " . $e->getMessage());
-            }
-
-            while (ob_get_level() > 0) { ob_end_clean(); }
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['status' => 'success']);
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Likidite transferi başarıyla işlendi! Havuz anaparaları güncellendi.'
+            ]);
             exit;
-        } else {
-            while (ob_get_level() > 0) { ob_end_clean(); }
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['status'  => 'error', 'message' => 'Aktarılacak canlı faiz geliri bulunamadı.']);
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) { $db->rollBack(); }
+            
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Finansal Transfer İptal Edildi: ' . $e->getMessage()
+            ]);
             exit;
         }
     }
+    
 
-    // 13. Faiz Güncelle
-    if ($islem === 'faiz_guncelle') {
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Finansal komuta merkezi parametreleri senkronize edildi.',
-            'dinamik_anapara' => $isbank_o_faizsiz_ana_para
-        ]);
-        exit;
-    }
-
-    // 14. DÖNEM DEVRET MOTORU (MIGRATION Katmanı)
-    if ($islem === 'donem_devret') {
-        // 1. Bir sonraki dönemin string formatını hesapla (Örn: 2026-08)
-        list($current_y, $current_m) = explode('-', $aktif_donem);
-        $next_m = intval($current_m) + 1; $next_y = intval($current_y);
-        if ($next_m > 12) { $next_m = 1; $next_y++; }
-        $yeni_aktif_donem = $next_y . '-' . sprintf("%02d", $next_m);
-
-        // 2. Aktif dönem (Temmuz) bütçe akış tablosunu tamamen boşalt
-        $db->prepare("DELETE FROM butce_akis WHERE aktif_donem = :donem")->execute(['donem' => $aktif_donem]);
-
-        // 3. 🎯 CRITICAL REFORM: butce_akis_last tablosunda günlerdir hazırladığınız tüm taslak planlama kalemlerini tek bir hamlede asıl canlı bütçeye naklet!
-        $db->prepare("
-            INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, is_locked)
-            SELECT :yeni_donem, kalem_adi, tutar, 0.00, turu, 0 FROM butce_akis_last WHERE aktif_donem = :yeni_donem
-        ")->execute(['yeni_donem' => $yeni_aktif_donem]);
-
-        // 4. Planlama tablosunu bir sonraki ay için temizle ve hazırla
-        $db->prepare("DELETE FROM butce_akis_last WHERE aktif_donem = :yeni_donem")->execute(['yeni_donem' => $yeni_aktif_donem]);
-
-        // 5. Kredi kartları asıl tablosunu sıfırla, last tablosundaki harcamaları buraya mühürle
-        $cc_last_data = $db->query("SELECT * FROM kredi_kartlari_last")->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($cc_last_data as $l_kart) {
-            $db->prepare("UPDATE kredi_kartlari SET donem_ici = :dnm, provizyon = :prv, doviz_borcu = :dvz WHERE kart_adi = :k_adi")
-               ->execute(['dnm' => $l_kart['donem_ici'], 'prv' => $l_kart['provizyon'], 'dvz' => $l_kart['doviz_borcu'], 'k_adi' => $l_kart['kart_adi']]);
-        }
-        // Last aynalama tablosunu yeni ay için sıfırla
-        $db->query("UPDATE kredi_kartlari_last SET donem_ici = 0.00, provizyon = 0.00, doviz_borcu = 0.00, kesinlesen_ekstre = 0.00");
-
-        // Oturumu yeni döneme mühürle ve sayfayı yenile
-        $_SESSION['aktif_donem'] = $yeni_aktif_donem;
-        
-        echo json_encode(['status' => 'success']);
-        exit;
-    }
-
-} 
-
-// <--- POST İSTEKLERİNİ YÖNETEN ANA IF SARMALININ KAPANIŞI (POST KİLİTLENDİ)
+}
 
 
-// 📌 KLONLAMA MOTORU SÜRECİ (POST SARMALI DIŞI)
 $stmt_kalemler = $db->prepare("SELECT * FROM butce_akis WHERE aktif_donem = :donem ORDER BY id ASC");
-$stmt_kalemler->execute(['donem' => $aktif_donem]);
+$stmt_kalemler->execute(['donem' => $aktif_donem]); 
 $kalemler = $stmt_kalemler->fetchAll(PDO::FETCH_ASSOC);
 
-// Eğer yeni dönem (Örn: 2026-08) veritabanında tamamen boşsa klonlama motorunu çalıştır
-if (empty($kalemler)) {
-    list($g_yil, $g_ay) = explode('-', $aktif_donem);
-    $gecmis_ay = intval($g_ay) - 1; $gecmis_yil = intval($g_yil);
-    if ($gecmis_ay < 1) { $gecmis_ay = 12; $gecmis_yil--; }
-    $gecmis_donem_string = $gecmis_yil . '-' . sprintf("%02d", $gecmis_ay);
 
-    // Geçmiş aydan nakit girişleri ve transfer fonları dışındaki kalıcı şablon bütçe kalemleri çekilir
-    $stmt_gecmis = $db->prepare("SELECT * FROM butce_akis WHERE aktif_donem = :gecis AND kalem_adi != 'Evdeki Nakit Girişi' AND kalem_adi NOT LIKE '%Havuz Transfer Fonu%'");
-    $stmt_gecmis->execute(['gecis' => $gecmis_donem_string]);
-    $gecmis_kalemler = $stmt_gecmis->fetchAll(PDO::FETCH_ASSOC);
-
-    list($aktif_yil_hesap, $aktif_ay_hesap) = explode('-', $aktif_donem);
-    $a_yil_int = intval($aktif_yil_hesap); $a_ay_int = intval($aktif_ay_hesap);
-
-    $su_birim_fiyat = 140.00; $yeni_pazartesi_sayisi = 0;
-    
-    // Herhangi bir takvim extension bağımlılığı olmadan DateTime sınıfı ile Pazartesi gün tarama motoru
-    $tarih_nesnesi = new DateTime("$a_yil_int-$a_ay_int-01");
-    $yeni_ay_gun_sayisi = intval($tarih_nesnesi->format('t'));
-
-    for ($d = 1; $d <= $yeni_ay_gun_sayisi; $d++) {
-        $kontrol_tarihi = new DateTime("$a_yil_int-$a_ay_int-$d");
-        if ($kontrol_tarihi->format('N') == 1) { $yeni_pazartesi_sayisi++; }
-    }
-    
-    // Pazartesi tarama sonucuna göre dinamik su bütçesi enjeksiyonu
-    $yeni_ay_dinamik_su_tutari = $yeni_pazartesi_sayisi * $su_birim_fiyat * 2;
-    if ($yeni_ay_dinamik_su_tutari <= 0) { $yeni_ay_dinamik_su_tutari = 1120.00; }
-
-    $stmt_kontrol = $db->prepare("SELECT COUNT(*) FROM butce_akis WHERE aktif_donem = :donem AND kalem_adi = :adi");
-
-    foreach ($gecmis_kalemler as $g_kalem) {
-        $stmt_kontrol->execute(['donem' => $aktif_donem, 'adi' => $g_kalem['kalem_adi']]);
-        if ($stmt_kontrol->fetchColumn() == 0) {
-            $isim = trim($g_kalem['kalem_adi']); $l_isim_kucuk = mb_strtolower($isim, 'UTF-8');
-            
-            // Eğer kalem Damacana veya Su ise geçmiş aydaki değeri ezip yeni ayın formül bütçesini atıyoruz
-            if (strpos($l_isim_kucuk, 'damacana') !== false || strpos($l_isim_kucuk, 'içme suyu') !== false || strpos($l_isim_kucuk, 'su') !== false) {
-                $enjekte_tutar = $yeni_ay_dinamik_su_tutari;
-            } else { 
-                $enjekte_tutar = floatval($g_kalem['tutar']); 
-            }
-
-            $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu, is_locked) VALUES (:donem, :adi, :tutar, 0.00, :turu, 0)")
-               ->execute(['donem' => $aktif_donem, 'adi' => $g_kalem['kalem_adi'], 'tutar' => $enjekte_tutar, 'turu' => $g_kalem['turu']]);
-        }
-    }
-    // Listeyi yeni döneme ait satırlarla tam senkron güncelle
-    $stmt_kalemler->execute(['donem' => $aktif_donem]);
-    $kalemler = $stmt_kalemler->fetchAll(PDO::FETCH_ASSOC);
-}
-
-
-
-// %100 GARANTİLİ NERGİZ CEP VE KALICI AİDAT VERİ GÜVENCESİ REFORMLARI
-$nergiz_kontrol = false;
-$aidat_kontrol = false;
-foreach ($kalemler as $kalem) {
-    $k_k_adi = trim($kalem['kalem_adi']);
-    if ($k_k_adi === 'Nergiz Cep') { $nergiz_kontrol = true; }
-    if ($k_k_adi === 'Aidat')      { $aidat_kontrol = true; }
-}
-
-if (!$nergiz_kontrol) {
-    $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu) VALUES (:donem, 'Nergiz Cep', 220.00, 0.00, 'gider')")->execute(['donem' => $aktif_donem]);
-}
-if (!$aidat_kontrol) {
-    $db->prepare("INSERT INTO butce_akis (aktif_donem, kalem_adi, tutar, odenen_tutar, turu) VALUES (:donem, 'Aidat', 1000.00, 0.00, 'gider')")->execute(['donem' => $aktif_donem]);
-}
-
-if (!$nergiz_kontrol || !$aidat_kontrol) {
-    $stmt_kalemler->execute(['donem' => $aktif_donem]);
-    $kalemler = $stmt_kalemler->fetchAll(PDO::FETCH_ASSOC);
-}
-
-// Görünüme (View) gidecek olan gelir ve gider dizilerini sızıntısız ayrıştırma
-$gelirler = []; $giderler = [];
-foreach ($kalemler as $kalem) {
-    if (trim($kalem['aktif_donem']) === trim($aktif_donem)) {
-        if ($kalem['turu'] === 'gelir') { $gelirler[] = $kalem; } else { $giderler[] = $kalem; }
-    }
-}
-
-// 💳 SAĞ SÜTUN: KREDİ KARTI TAKSİT VE METRİK VERİLERİNİN ÇEKİLMESİ
 $db_taksitler = $db->query("SELECT * FROM cc_taksitler ORDER BY ay_index ASC")->fetchAll(PDO::FETCH_ASSOC);
-$db_kart_metrikleri = $db->query("SELECT * FROM kredi_kartlari")->fetchAll(PDO::FETCH_ASSOC);
-$cc_meta = [];
-foreach ($db_kart_metrikleri as $kart) {
-    $k_adi = ($kart['kart_adi'] === 'vakifbank') ? 'vakif' : 'isbank'; 
-    $cc_meta[$k_adi . '_donem_ici']   = floatval($kart['donem_ici']);
-    $cc_meta[$k_adi . '_provizyon']   = floatval($kart['provizyon']);
-    $cc_meta[$k_adi . '_doviz']       = floatval($kart['doviz_borcu']);
-    $cc_meta[$k_adi . '_ekstre']      = floatval($kart['kesinlesen_ekstre']);
+$cc_meta = []; 
+foreach ($db->query("SELECT * FROM kredi_kartlari")->fetchAll(PDO::FETCH_ASSOC) as $kart) { 
+    $k = ($kart['kart_adi'] === 'vakifbank') ? 'vakif' : 'isbank'; 
+    $cc_meta[$k . '_donem_ici'] = floatval($kart['donem_ici']); 
+    $cc_meta[$k . '_provizyon'] = floatval($kart['provizyon']); 
+    $cc_meta[$k . '_doviz'] = floatval($kart['doviz_borcu']); 
+    $cc_meta[$k . '_ekstre'] = floatval($kart['kesinlesen_ekstre']); 
 }
-
-
-foreach(['isbank', 'vakif'] as $p) {
-    $cc_meta[$p.'_donem_ici']  = $cc_meta[$p.'_donem_ici'] ?? 0.00;
-    $cc_meta[$p.'_provizyon']  = $cc_meta[$p.'_provizyon'] ?? 0.00;
-    $cc_meta[$p.'_doviz']      = $cc_meta[$p.'_doviz'] ?? 0.00;
-    $cc_meta[$p.'_ekstre']     = $cc_meta[$p.'_ekstre'] ?? 0.00;
+$isbank_aktif_taksit = 0; $vakif_aktif_taksit = 0; 
+foreach ($db_taksitler as $t) { 
+    if (intval($t['ay_index']) === $aktif_ay_index) { 
+        $isbank_aktif_taksit = floatval($t['isbank_tutar']); 
+        $vakif_aktif_taksit = floatval($t['vakif_tutar']); 
+    } 
 }
-
-$isbank_aktif_taksit = 0; $vakif_aktif_taksit = 0;
-$isbank_kalan_taksit = 0; $vakif_kalan_taksit = 0;
-
-foreach ($db_taksitler as $t_satir) {
-    $idx = intval($t_satir['ay_index']);
-    if ($idx === $aktif_ay_index) {
-        $isbank_aktif_taksit = floatval($t_satir['isbank_tutar']);
-        $vakif_aktif_taksit  = floatval($t_satir['vakif_tutar']);
-    } elseif ($idx > $aktif_ay_index) {
-        $isbank_kalan_taksit += floatval($t_satir['isbank_tutar']);
-        $vakif_kalan_taksit  += floatval($t_satir['vakif_tutar']);
-    }
-}
+$isbank_card_borcu = $cc_meta['isbank_donem_ici'] + $cc_meta['isbank_provizyon'] + $cc_meta['isbank_doviz'] + $cc_meta['isbank_ekstre'] + $isbank_aktif_taksit;
+$vakif_card_borcu = $cc_meta['vakif_donem_ici'] + $cc_meta['vakif_provizyon'] + $cc_meta['vakif_doviz'] + $cc_meta['vakif_ekstre'] + $vakif_aktif_taksit;
 
 
-// =================================================================================
-// 🏛️ PART 3: REEL LİKİDİTE FAİZ MATRİSİ VE NİHAİ ADAPTÖR MÜHÜRLEME KATMANI
-// =================================================================================
-
-$temiz_faiz_donem = trim($aktif_donem);
-
-// 1. Veritabanına geçmişte aktarılmış (tahsili yapılmış) faizlerin toplamını tam eşleşmeyle oku
-$db_gecmis_faiz_a = $db->prepare("SELECT SUM(faizgeliri_a) FROM faiz_gelirleri WHERE TRIM(donem) = :donem");
-$db_gecmis_faiz_a->execute(['donem' => $temiz_faiz_donem]);
-$toplam_eski_faiz_a = floatval($db_gecmis_faiz_a->fetchColumn());
-
-$db_gecmis_faiz_o = $db->prepare("SELECT SUM(faizgeliri_o) FROM faiz_gelirleri WHERE TRIM(donem) = :donem");
-$db_gecmis_faiz_o->execute(['donem' => $temiz_faiz_donem]);
-$toplam_eski_faiz_o = floatval($db_gecmis_faiz_o->fetchColumn());
-
-$toplam_aktarilmis_eski_faiz = $toplam_eski_faiz_a + $toplam_eski_faiz_o;
+$gelirler = []; $giderler = []; 
+foreach ($kalemler as $k) { if ($k['turu'] === 'gelir') $gelirler[] = $k; else $giderler[] = $k; }
+// $live_kurlar = ForexExchange::getLiveRates()['kurlar']; 
+// $canli_ana_yatirim_bakiye_tl = max(0, $isbank_a_bakiye - $net_ana_havuz_faiz_php);   
 
 
-// 🎯 FİNANSAL MATEMATİK: Döngü içerisinde faizler eklenip krediler/harcamalar düşüldüğü için,
-// elde kalan ham anaparalar bizim nihai faizsiz anapara bariyerimizdir.
-$isbank_k_faizsiz_ana_para = max(0, $isbank_a_anapara);
-$isbank_o_faizsiz_ana_para = $isbank_o_anapara;
-
-// Eğer simülasyon başlangıç anındaysa, hiçbir şey ödenmediyse ve faiz birikmediyse input bütçesini göster
-if ($isbank_o_anapara == 0 && !$kredi_odendi && $toplam_eski_faiz_o == 0) {
-    $isbank_o_faizsiz_ana_para = floatval($dinamik_faiz_kredi_butcesi);
-}
-
-
-// 2. Sadece içinde bulunulan saniyedeki anlık canlı nemaları (geleceğe yönelik) hesapla
-$ana_havuz_faiz    = ($isbank_k_faizsiz_ana_para > 0) ? ($isbank_k_faizsiz_ana_para * ($faiz_orani / 100) / 365) * $faiz_gun_sayisi : 0;
-$kredi_havuzu_faiz = ($isbank_o_faizsiz_ana_para > 0 && !$kredi_odendi) ? ($isbank_o_faizsiz_ana_para * ($faiz_orani / 100) / 365) * $faiz_gun_sayisi : 0;
-
-// Net nemaların mühürlenmesi (Stopaj Kesintili)
-$isbank_a_nema = $ana_havuz_faiz * (1 - ($faiz_stopaj / 100));
-$isbank_o_nema = $kredi_havuzu_faiz * (1 - ($faiz_stopaj / 100));
-
-$toplam_canli_faiz_kazanci = $isbank_a_nema + $isbank_o_nema;
-
-
-// 🎯 MÜHÜR: Yıllık Excel matrisinin (Blok 11) hata vermeden çalışması için nihai mühürlü faizi bağla
-$harcama_tablosu_nihai_faizi = $toplam_aktarilmis_eski_faiz + $toplam_canli_faiz_kazanci;
+ 
 
 
 
-// =========================================================================
-// GÜVENLİK YAMASI: INTERAKTİF FOREX SATIN ALMA DÜŞÜM ADAPTÖRÜ
-// =========================================================================
-// İlgili döneme ait toplam yapılan forex satın alma maliyetini DB'den çekip 
-// ana paradan kalıcı olarak düşüyoruz. Böylece sayfa yenilense de bakiye hatasız azalır.
-try {
-    $aktif_donem_kontrol = isset($aktif_donem) ? $aktif_donem : date('Y-m');
-    $fx_bakiye_sorgu = $db->prepare("SELECT IFNULL(`yatirim_tutari`, 0.0000) as `toplam_harcanan` FROM `aylik_harcama_raporu` WHERE `donem` = ? LIMIT 1");
-    $fx_bakiye_sorgu->execute([$aktif_donem_kontrol]);
-    $fx_bakiye_row = $fx_bakiye_sorgu->fetch(PDO::FETCH_ASSOC);
-    if ($fx_bakiye_row && floatval($fx_bakiye_row['toplam_harcanan']) > 0) {
-        // Harcanan para, sayfa yenilendiğinde yukarıdaki eski kodların hesapladığı ana paradan zorla düşülüyor!
-        $isbank_k_faizsiz_ana_para = $isbank_k_faizsiz_ana_para - floatval($fx_bakiye_row['toplam_harcanan']);
-    }
-} catch (PDOException $e) { }
 
-
-// 🎯 NİHAİ MÜHÜRLÜ BAKİYELER (Sizin mevcut kod alanınız bu satırdan itibaren aynen devam edecek)
-$isbank_a_bakiye  = $isbank_k_faizsiz_ana_para + $isbank_a_nema;
-$isbank_o_bakiye  = $isbank_o_faizsiz_ana_para + $isbank_o_nema;
-$vakif_o_bakiye   = $vakif_o_anapara; 
-$nakit_bakiye     = $nakit_anapara;
-
-$isbank_k_bakiye  = $isbank_a_bakiye;
-
-
-// =================================================================================
-// 🛡️ REFACTOR: VIEW KATMANI ADAPTÖRÜ VE NULL DEĞER KORUMA BARİYERİ (PHP 8+ UYUMLU)
-// =================================================================================
-$net_kredi_faiz_t_php          = floatval($isbank_o_nema);
-$net_ana_havuz_faiz_php         = floatval($isbank_a_nema);
-$zorunlu_fatura_bloke_tutari   = floatval($vakif_bloke);
-$vakifbank_bakiye              = floatval($vakif_o_bakiye);
-$zorunlu_su_bloke_tutari       = floatval($nakit_bloke);
 
 
 
@@ -950,7 +1264,7 @@ for ($m = 1; $m <= 12; $m++) {
                 $yillik_matris[$m]['faiz_gelir'] = floatval($yillik_matris[$m]['faiz_gelir']);
             } else {
                 // Eğer veritabanında henüz hiç faiz yoksa (Simülasyon başlangıcıysa) anlık canlı nema simülasyonunu göster
-                $yillik_matris[$m]['faiz_gelir'] = $harcama_tablosu_nihai_faizi; 
+                //$yillik_matris[$m]['faiz_gelir'] = $harcama_tablosu_nihai_faizi; 
             }
         }
         
@@ -961,116 +1275,69 @@ for ($m = 1; $m <= 12; $m++) {
 }
 
 
-
-
-
 // =========================================================================
-// %100 SAF DİNAMİK HER VARLIKTA BİNDE 2 VERGİ ENTEGRELİ CONTROLLER
+// 🏛️ REFORM: MUTLAKname VE SAF SQL TABANLI DASHBOARD VERİ MOTORU 🚀
 // =========================================================================
-
-$kur_servis_management = ForexExchange::getLiveRates();
-$live_kurlar = $kur_servis_management['kurlar']; 
-
-$canli_ana_yatirim_bakiye_tl = floatval($isbank_k_faizsiz_ana_para);
-
-
-
-// =========================================================================
-// %100 INTERAKTİF SATIN ALMA VE DEĞİŞKEN TABANLI ANLIK HAVUZ DÜŞÜMÜ (POST)
-// =========================================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'interaktif_forex_satinal') {
+try {
+    // 1. Kasa Havuz ve Canlı Nema Verilerinin Çekilmesi
+    $havuzSorgu = $db->query("SELECT havuz_kodu, anapara, nema FROM finansal_havuzlar");
+    $havuzListesi = $havuzSorgu->fetchAll(PDO::FETCH_ASSOC);
     
-    $modal_doviz_cinsi = filter_input(INPUT_POST, 'modal_doviz_cinsi', FILTER_SANITIZE_SPECIAL_CHARS);
-    $modal_miktar      = filter_input(INPUT_POST, 'modal_miktar', FILTER_VALIDATE_FLOAT);
-    $modal_manuel_kur  = filter_input(INPUT_POST, 'modal_manuel_kur', FILTER_VALIDATE_FLOAT);
-    
-    // Panelinizde seçili olan cari dönemi (Örn: 2026-07) baz alıyoruz
-    $hedef_butce_donemi = isset($aktif_donem) ? $aktif_donem : date('Y-m');
-
-
-    $canli_secilen_kur = isset($live_kurlar[$modal_doviz_cinsi]) ? (float)$live_kurlar[$modal_doviz_cinsi] : 0;
-    $nihai_islem_kuru  = ($modal_manuel_kur > 0) ? $modal_manuel_kur : $canli_secilen_kur;
-
-    if ($modal_doviz_cinsi && $modal_miktar > 0 && $nihai_islem_kuru > 0) {
-        try {
-            $db->beginTransaction();
-
-            // 1. İşlem: Toplam maliyet hesaplama (%0.2 kambiyo vergisi dahil)
-            $net_tutar = $modal_miktar * $nihai_islem_kuru;
-            $vergi_tutari = $net_tutar * 0.0020;
-            $toplam_maliyet = $net_tutar + $vergi_tutari;
-
-            // Güvenlik Kilidi: Alınacak tutar, kilitli faizsiz ana paradan küçük veya eşit mi?
-            if ($toplam_maliyet <= $canli_ana_yatirim_bakiye_tl) {
-
-                // ADIM 1: forex_islemler tablosuna yeni alımı canlı kur ve vergisiyle mühürle
-                $ins_sorgu = $db->prepare("INSERT INTO `forex_islemler` 
-                    (`islem_tarihi`, `islem_turu`, `doviz_cinsi`, `miktar`, `doviz_kuru`, `tutar`, `vergi`, `maliyet`) 
-                    VALUES (CURDATE(), 2, ?, ?, ?, ?, ?, ?)");
-                $ins_sorgu->execute([
-                    $modal_doviz_cinsi, 
-                    $modal_miktar, 
-                    $nihai_islem_kuru, 
-                    $net_tutar, 
-                    $vergi_tutari, 
-                    $toplam_maliyet
-                ]);
-
-                // ADIM 2: Harcanan TL tutarı, o döneme ait aylik_harcama_raporu -> yatirim_tutari kolonuna kümülatif eklenir
-                $upsert_harcama = $db->prepare("INSERT INTO `aylik_harcama_raporu` (`donem`, `yatirim_tutari`) 
-                    VALUES (?, ?) 
-                    ON DUPLICATE KEY UPDATE `yatirim_tutari` = `yatirim_tutari` + ?");
-                $upsert_harcama->execute([
-                    $hedef_butce_donemi, 
-                    $toplam_maliyet, 
-                    $toplam_maliyet
-                ]);
-
-                $db->commit();
-
-                // =========================================================================
-                // 🎯 KESİN ÇÖZÜM: TÜM ÜST/ALT DEĞİŞKENLERİ MANUEL OLARAK ANINDA GÜNCELLE
-                // =========================================================================
-                // Harcanan toplam maliyet tutarı, sizin faizsiz ana paranızdan anında düşülür
-                $isbank_k_faizsiz_ana_para = $isbank_k_faizsiz_ana_para - $toplam_maliyet;
-                
-                // Bağlı olan nihai mühürlü bakiyeler zincirleme olarak anında güncelleniyor
-                $isbank_a_bakiye  = $isbank_k_faizsiz_ana_para + $isbank_a_nema;
-                
-                // HATA DÜZELTİLDİ: Sizin arayüze basılan ana mühür değişkeniniz el ile güncelleniyor!
-                $isbank_k_bakiye  = $isbank_a_bakiye;
-                
-                // JavaScript ve View katmanına giden emniyet sınırları anında revize ediliyor
-                $canli_ana_yatirim_bakiye_tl = floatval($isbank_k_faizsiz_ana_para);
-                $yilsal_net_tasarruf_tl      = $canli_ana_yatirim_bakiye_tl;
-
-                // Formun çift gönderilmesini önlemek amacıyla sayfayı yenileyerek işlemi mühürle
-                header("Location: " . $_SERVER['REQUEST_URI']);
-                exit;
-            } else {
-                $db->rollBack();
-            }
-        } catch (Exception $e) {
-            $db->rollBack();
-        }
+    $havuzAnapara = [];
+    $havuzNema     = [];
+    foreach ($havuzListesi as $h) {
+        $kod = trim($h['havuz_kodu']);
+        $havuzAnapara[$kod] = floatval($h['anapara']);
+        $havuzNema[$kod]     = floatval($h['nema'] ?? 0);
     }
+
+    // 2. Aktif Dönem Sabitlerinin 'tutar - odenen_tutar' Farklarının Saf SQL ile Hesaplanması
+    // Kural: name alanları üzerinden doğrudan bütçe yükleri (Kalan borçlar) hesaplanır
+    $butceSorgu = $db->prepare("SELECT name, (tutar - odenen_tutar) AS kalan_yuk FROM butce_akis WHERE aktif_donem = ? AND turu = 'gider'");
+    $butceSorgu->execute([$aktif_donem]);
+    $butceListesi = $butceSorgu->fetchAll(PDO::FETCH_ASSOC);
+
+    $butceKalanlar = [];
+    foreach ($butceListesi as $b) {
+        $bName = trim($b['name']);
+        if (!isset($butceKalanlar[$bName])) {
+            $butceKalanlar[$bName] = 0.00;
+        }
+        $butceKalanlar[$bName] += floatval($b['kalan_yuk']);
+    }
+
+    // Damacana Su satırı name='harcama_nakit' altında olduğu için onu ayrıca temiz yakalıyoruz
+    $suSorgu = $db->prepare("SELECT (tutar - odenen_tutar) AS kalan_su FROM butce_akis WHERE aktif_donem = ? AND turu = 'gider' AND name = 'harcama_nakit' AND (kalem_adi LIKE '%Damacana%' OR kalem_adi LIKE '%damacana%') LIMIT 1");
+    $suSorgu->execute([$aktif_donem]);
+    $kalan_damacana_su_tutari = floatval($suSorgu->fetchColumn());
+
+} catch (Exception $e) {
+    // Çökme Emniyet Barajı
+    $havuzAnapara = ['isbank_o' => 0, 'isbank_a' => 0, 'vakif_o' => 0, 'nakit' => 0];
+    $havuzNema     = ['isbank_o' => 0, 'isbank_a' => 0];
+    $butceKalanlar = ['elektrik' => 0, 'su' => 0, 'dogalgaz' => 0, 'telefon' => 0, 'internet' => 0, 'aidat' => 0, 'ev_kredisi' => 0];
+    $kalan_damacana_su_tutari = 0.00;
 }
 
+    // Canlı Değişkenlerin Atanması (JS Hesaplayıcısına data-taban olarak enjekte edilecek)
+    $ana_isbank_o_anapara = max(0, $havuzAnapara['isbank_o'] ?? 0);
+    $ana_isbank_a_anapara = max(0, $havuzAnapara['isbank_a'] ?? 0);
+    $ana_vakif_o_anapara  = max(0, $havuzAnapara['vakif_o'] ?? 0);
+    $ana_nakit_anapara    = max(0, $havuzAnapara['nakit'] ?? 0);
+
+    $canli_isbank_o_nema   = max(0, $havuzNema['isbank_o'] ?? 0);
+    $canli_isbank_a_nema   = max(0, $havuzNema['isbank_a'] ?? 0);
+
+    // Söylediğiniz kurallara göre kümülatif bütçe bloke tabanları hesaplanıyor (tutar - odenen)
+    $bloke_faturalar_taban = floatval(($butceKalanlar['elektrik'] ?? 0) + ($butceKalanlar['su'] ?? 0) + ($butceKalanlar['dogalgaz'] ?? 0) + ($butceKalanlar['telefon'] ?? 0) + ($butceKalanlar['internet'] ?? 0));
+    $bloke_su_aidat_taban  = floatval($kalan_damacana_su_tutari + ($butceKalanlar['aidat'] ?? 0));
+    $bloke_kredi_taban     = floatval($ana_isbank_o_anapara); // Kredi bloke tabanı her zaman İşbank Ö anapara
 
 
+    // DÖVİZ İŞLEMLERİ
+    $kur_servis_management = ForexExchange::getLiveRates();
+    $live_kurlar = $kur_servis_management['kurlar']; 
+    $canli_ana_yatirim_bakiye_tl = $ana_isbank_a_anapara ?? 0.00;
 
 
-// =================================================================================
-// 🛡️ VIEW KATMANI ENTEGRASYON KÖPRÜLERİ (GÜNCELLENEN KART MATRİSİ)
-// =================================================================================
-
-// 🎯 ÇÖZÜM 1: HTML satır 532'deki Kredi Faiz Bütçesi inputunun eski ismini yeni güvenli tabana bağla
-$evKredisiTutariStandart2 = $kredi_input_butcesi;
-
-// 🎯 ÇÖZÜM 2: HTML satır 415 ve kart alanları için kümülatif canlı kart borç matrisleri
-$isbank_card_borcu = $cc_meta['isbank_donem_ici'] + $cc_meta['isbank_provizyon'] + $cc_meta['isbank_doviz'] + $cc_meta['isbank_ekstre'] + $isbank_aktif_taksit;
-$vakif_card_borcu  = $cc_meta['vakif_donem_ici'] + $cc_meta['vakif_provizyon'] + $cc_meta['vakif_doviz'] + $cc_meta['vakif_ekstre'] + $vakif_aktif_taksit;
-
-// 🏛️ GÖRÜNÜM KATMANININ YÜKLENMESİ
 require admin_view('management');
-

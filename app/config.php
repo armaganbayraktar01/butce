@@ -4,12 +4,12 @@
 define('PATH', realpath('.'));
 define('SUBFOLDER', true);
 define('URL','http://localhost/butce');
-define('SUBFOLDER_NAME', 'hfa');
+define('SUBFOLDER_NAME', 'butce');
 
 //veritabanı bağlantısı için dizi
 return [
     'db' => [
-        'name' => 'hfa',
+        'name' => 'butce',
         'host' => 'localhost',
         'user' => 'root',
         'password' => ''
