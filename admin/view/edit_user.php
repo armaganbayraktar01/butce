@@ -1,4 +1,15 @@
-<?php require admin_view('static/header'); ?>
+<?php 
+    ## Tags Bilgileri
+    $meta = [
+        'site_title' => 'Üye Düzenleme | Bütçe Yönetimi',
+        'site_desc' => 'Bütçe Yönetimi',
+        'site_keyw' => 'Bütçe Yönetimi'
+    ];
+    # Tags Bilgileri
+
+    require admin_view("static/header"); 
+
+?>
 
 <!--content-->
 <div class="content">

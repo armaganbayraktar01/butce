@@ -5,10 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 
     <meta charset="UTF-8">
-    <title>Document</title>
+    <title><?= $meta['site_title'] ? $meta['site_title'] : 'Document' ?></title>
+    <meta name="description" content="<?= $meta['site_desc'] ? $meta['site_desc'] : 'Document description' ?>">
 
-        <!--styles-->
+
+    <!-- Özel (Custom) Meta Verileri -->
+    <meta name="page-name" content="ev_kredisi_takip">
+    <meta name="page-id" content="101">
+
+
+     <!--styles-->
+        
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.css">
+
     <link rel="stylesheet" href="<?=admin_public_url('styles/main.css')?>">
     <link rel="stylesheet" href="<?=admin_public_url('vendor/jquery.tagsinput/jquery.tagsinput-revisited.min.css')?>">
     <link rel="stylesheet" href="https://jquery.com">
@@ -124,156 +134,181 @@
         }
 
         .menu-container{
-    max-width:1400px;
-    margin:auto;
-    padding:24px;
-}
+            max-width:1400px;
+            margin:auto;
+            padding:24px;
+        }
 
-.report-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:24px;
-}
+        .report-grid{
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:24px;
+        }
 
-.form-card{
-    background:#fff;
-    border:1px solid #e4e9f1;
-    border-radius:12px;
-    padding:24px;
-}
+        .form-card{
+            background:#fff;
+            border:1px solid #e4e9f1;
+            border-radius:12px;
+            padding:24px;
+        }
 
-.full-width-card{
-    grid-column:1/-1;
-    background:#fff;
-    border:1px solid #e4e9f1;
-    border-radius:12px;
-    padding:24px;
-}
+        .full-width-card{
+            grid-column:1/-1;
+            background:#fff;
+            border:1px solid #e4e9f1;
+            border-radius:12px;
+            padding:24px;
+        }
 
-.form-group{
-    display:flex;
-    flex-direction:column;
-    margin-bottom:16px;
-}
+        .form-group{
+            display:flex;
+            flex-direction:column;
+            margin-bottom:16px;
+        }
 
-.form-group:last-child{
-    margin-bottom:0;
-}
+        .form-group:last-child{
+            margin-bottom:0;
+        }
 
-.form-group label{
-    margin-bottom:6px;
-    font-weight:600;
-    color:#2c3e50;
-}
+        .form-group label{
+            margin-bottom:6px;
+            font-weight:600;
+            color:#2c3e50;
+        }
 
-.form-group input,
-.form-group select,
-.form-group textarea{
-    width:100%;
-    border:1px solid #dce3eb;
-    border-radius:8px;
-    padding:10px 12px;
-    box-sizing:border-box;
-}
+        .form-group input,
+        .form-group select,
+        .form-group textarea{
+            width:100%;
+            border:1px solid #dce3eb;
+            border-radius:8px;
+            padding:10px 12px;
+            box-sizing:border-box;
+        }
 
-.form-group textarea{
-    min-height:60px;
-    resize:vertical;
-}
+        .form-group textarea{
+            min-height:60px;
+            resize:vertical;
+        }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus{
-    outline:none;
-    border-color:#3498db;
-}
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus{
+            outline:none;
+            border-color:#3498db;
+        }
 
-.form-actions{
-    grid-column:1/-1;
-    display:flex;
-    justify-content:flex-end;
-}
+        .form-actions{
+            grid-column:1/-1;
+            display:flex;
+            justify-content:flex-end;
+        }
 
-.save-btn{
-    border:none;
-    background:#2e7d32;
-    color:#fff;
-    border-radius:8px;
-    padding:12px 32px;
-    cursor:pointer;
-    font-weight:600;
-}
+        .save-btn{
+            border:none;
+            background:#2e7d32;
+            color:#fff;
+            border-radius:8px;
+            padding:12px 32px;
+            cursor:pointer;
+            font-weight:600;
+        }
 
-@media(max-width:992px){
+        @media(max-width:992px){
 
-    .report-grid{
-        grid-template-columns:1fr;
-    }
-}
+            .report-grid{
+                grid-template-columns:1fr;
+            }
+        }
 
-    /* 1. Ürün Havuzu Kaydırma Çubuğu Düzenlemesi (Opsiyonel / İnce Modern Yapı) */
-    #product_pool_container {
-        scrollbar-width: thin;
-    }
-    #product_pool_container::-webkit-scrollbar {
-        width: 6px;
-    }
-    #product_pool_container::-webkit-scrollbar-track {
-        background: #f1f5f9;
-        border-radius: 4px;
-    }
-    #product_pool_container::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
+            /* 1. Ürün Havuzu Kaydırma Çubuğu Düzenlemesi (Opsiyonel / İnce Modern Yapı) */
+            #product_pool_container {
+                scrollbar-width: thin;
+            }
+            #product_pool_container::-webkit-scrollbar {
+                width: 6px;
+            }
+            #product_pool_container::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 4px;
+            }
+            #product_pool_container::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+            }
 
-    /* 2. Havuz Butonlarının Tasarımı (Aykırı Ürün Etiketleriyle Birebir Aynı) */
-    .pool-product-btn {
-        display: inline-flex !important;
-        align-items: center !important;
-        background: #e9ecef !important; /* Etiket arka plan rengi */
-        color: rgb(73, 80, 87) !important;      /* Etiket yazı rengi */
-        padding: 4px 10px !important;    /* Etiket iç boşluğu */
-        border-radius: 4px !important;   /* Etiket köşe ovali (20px yuvarlak yerine dikdörtgen) */
-        font-size: 13px !important;      /* Etiket font boyutu */
-        font-weight: 500 !important;     /* Etiket font kalınlığı */
-        gap: 8px !important;             /* Etiket içi ikon/metin boşluğu */
-        border: 1px solid #dee2e6 !important; /* Etiket sınır çizgisi */
-        cursor: pointer !important;
-        text-shadow: none !important;
-        margin: 0 !important; */
-        box-sizing: border-box !important; */
-        transition: all 0.15s ease-in-out !important; */
-    }
+            /* 2. Havuz Butonlarının Tasarımı (Aykırı Ürün Etiketleriyle Birebir Aynı) */
+            .pool-product-btn {
+                display: inline-flex !important;
+                align-items: center !important;
+                background: #e9ecef !important; /* Etiket arka plan rengi */
+                color: rgb(73, 80, 87) !important;      /* Etiket yazı rengi */
+                padding: 4px 10px !important;    /* Etiket iç boşluğu */
+                border-radius: 4px !important;   /* Etiket köşe ovali (20px yuvarlak yerine dikdörtgen) */
+                font-size: 13px !important;      /* Etiket font boyutu */
+                font-weight: 500 !important;     /* Etiket font kalınlığı */
+                gap: 8px !important;             /* Etiket içi ikon/metin boşluğu */
+                border: 1px solid #dee2e6 !important; /* Etiket sınır çizgisi */
+                cursor: pointer !important;
+                text-shadow: none !important;
+                margin: 0 !important; */
+                box-sizing: border-box !important; */
+                transition: all 0.15s ease-in-out !important; */
+            }
 
-    /* 3. 🔥 Havuz Butonları İçin Hover ve Tıklama Efektleri */
-    .pool-product-btn:hover {
-        background: #dee2e6 !important; /* Üzerine gelindiğinde hafifçe koyulaşma */
-        color: #212529 !important;      /* Yazı rengini biraz daha netleştirme */
-        border-color: #ced4da !important;
-        transform: translateY(-1px);    /* Çok hafif yukarı yükselme efekti */
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-    }
+            /* 3. 🔥 Havuz Butonları İçin Hover ve Tıklama Efektleri */
+            .pool-product-btn:hover {
+                background: #dee2e6 !important; /* Üzerine gelindiğinde hafifçe koyulaşma */
+                color: #212529 !important;      /* Yazı rengini biraz daha netleştirme */
+                border-color: #ced4da !important;
+                transform: translateY(-1px);    /* Çok hafif yukarı yükselme efekti */
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
+            }
 
-    .pool-product-btn:active {
-        transform: translateY(0);
-        box-shadow: none !important;
-    }
+            .pool-product-btn:active {
+                transform: translateY(0);
+                box-shadow: none !important;
+            }
 
-    </style>
+        </style>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     <!--scripts-->
     
     <script src="<?=admin_public_url('scripts/jquery-1.12.2.min.js')?>"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
-    <script src="<?=admin_public_url('vendor/jquery.tagsinput/jquery.tagsinput-revisited.min.js')?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>    <script src="<?=admin_public_url('vendor/jquery.tagsinput/jquery.tagsinput-revisited.min.js')?>"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/umd/popper.min.js" integrity="sha384-I7E8VVD/ismYTF4hNIPjVp/Zjvgyol6VFvRkX/vR+Vc4jQkC+hVqc2pM8ODewa9r" crossorigin="anonymous"></script>
+   
     <script src="https://cdn.datatables.net/2.3.8/js/dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+
+
+
 
     <script>
         var api_url = '<?= admin_url('api') ?>';
         var app_url = '<?= site_url('app/') ?>';
+        
+        if (typeof tags === 'undefined') { window.tags = []; }
     </script>
+
+
+
+
+
     <script src="<?=admin_public_url('scripts/admin.js')?>"></script>
     <script src="<?=admin_public_url('scripts/api.js')?>"></script>
     
@@ -390,15 +425,28 @@
     <!--content-->
     <div class="content">
 
-        <?php if (isset( $error )): ?>
+        <!-- =========================================================================
+            1. KISIM: YEREL BİLDİRİM ŞERİTLERİ (SESSION & DEĞİŞKEN UYUMLU SÜRÜM)
+            ========================================================================= -->
+        <?php 
+        // Eğer controller yukarısında session başlatılmadıysa emniyet kilidi
+        if (session_status() === PHP_SESSION_NONE) { session_start(); } 
+
+        // AJAX yenilemesinden gelen session verilerini yerel değişkenlere aktar
+        if (isset($_SESSION['forex_error'])) { $error = $_SESSION['forex_error']; unset($_SESSION['forex_error']); }
+        if (isset($_SESSION['forex_success'])) { $success = $_SESSION['forex_success']; unset($_SESSION['forex_success']); }
+        ?>
+
+        <?php if (isset($error) && !empty($error)): ?>
             <div class="message error box-">
-                <?= $error ?>
+                <?= htmlspecialchars($error) ?>
             </div>
         <?php endif; ?>
 
-        <?php if (isset( $success )): ?>
-            <div class="message error box-">
-                <?= $success ?>
+        <?php if (isset($success) && !empty($success)): ?>
+            <!-- 🎯 DÜZELTME: Sınıf ismi kurumsal yeşil standart olan 'success' moduna çekildi -->
+            <div class="message success box-">
+                <?= htmlspecialchars($success) ?>
             </div>
         <?php endif; ?>
 

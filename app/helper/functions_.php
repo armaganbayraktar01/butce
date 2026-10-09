@@ -106,3 +106,11 @@ function faizHesapla ($anapara, $faiz_orani, $faiz_gun_sayisi, $faiz_stopaj) {
     // Nihai tutarı hesapla ve döndür
     return $anapara * (1 + $faiz_net_carpan);
 }
+
+
+function printarray ($data) {
+    echo '<pre>';
+    print_r($data);
+    echo '</pre>';
+    exit;
+}

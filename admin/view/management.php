@@ -1,5 +1,16 @@
 <!-- C:\wamp64\www\hfa\admin\view\management.php -->
-<?php require admin_view("static/header"); ?>
+<?php 
+    ## Tags Bilgileri
+    $meta = [
+        'site_title' => 'Güncel Dönem Bütçe Yönetimi | Bütçe Yönetimi',
+        'site_desc' => 'Bütçe Yönetimi',
+        'site_keyw' => 'Bütçe Yönetimi'
+    ];
+    # Tags Bilgileri
+
+    require admin_view("static/header"); 
+
+?>
 
 <style>
     .butcestyle { font-size: 11px !important; }
@@ -75,7 +86,7 @@
         color: #f8f9fa;
     }
 
-    <!-- 🎯 MERKEZİ TASARIM STANDARTLARI CSS ALANI (GÖLGESİZ, SCROLLBARSIZ VE NET BORDERLI) -->
+    /* 🎯 MERKEZİ TASARIM STANDARTLARI CSS ALANI (GÖLGESİZ, SCROLLBARSIZ VE NET BORDERLI) */
 
     /* Kaydırma çubuğunu tamamen yok etme ve sığdırma */
     .excel-dashboard-wrapper .excel-temiz-responsive {
@@ -88,6 +99,66 @@
     .excel-dashboard-wrapper .excel-temiz-responsive::-webkit-scrollbar {
         display: none;
     }
+
+    /* Akıllı Faiz Paneli Premium Görsel Kimliği */
+    .faiz-card-title {
+        font-size: 13px !important;
+        letter-spacing: -0.2px;
+    }
+    .faiz-title-icon {
+        animation: pulseGlow 2s infinite ease-in-out;
+    }
+    .badge-fx { 
+        font-size: 10px !important; 
+        padding: 3px 6px; 
+        font-weight: 700; 
+        text-transform: uppercase; 
+        border-radius: 6px;
+        background: #f8f9fa;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        transition: all 0.2s ease-in-out;
+    }
+    .badge-fx:hover {
+        background: #f1f3f5;
+        transform: translateY(-1px);
+    }
+    .fx-prefix {
+        font-weight: 800;
+        opacity: 0.75;
+    }
+    /* Banka renk kimliklerine bağlı sızdırmaz renk mühürleri */
+    #pre-kredi-input { color: #dc3545 !important; } /* Kredi bütçesi: Dikkat çeken soft kırmızı */
+    #pre-isbank-a    { color: #004797 !important; } /* İşbank A: Kurumsal İş Bankası Mavisi */
+    #pre-isbank-o    { color: #007a33 !important; } /* İşbank Ö: Güven veren cüzdan yeşili */
+
+    /* İnput Alanlarının Finansal Odak Tasarımları */
+    .faiz-input-label {
+        font-size: 11px !important;
+        font-weight: 600;
+        color: #495057;
+    }
+    .faiz-input-style {
+        border: 1px solid #dee2e6 !important;
+        border-radius: 6px !important;
+        background-color: #fafbfc !important;
+        transition: all 0.15s ease-in-out !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02) !important;
+    }
+    .faiz-input-style:focus {
+        background-color: #ffffff !important;
+        border-color: #86b7fe !important;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important;
+    }
+
+    @keyframes pulseGlow {
+        0% { transform: scale(1); opacity: 0.9; }
+        50% { transform: scale(1.08); opacity: 1; filter: drop-shadow(0 0 4px rgba(255, 193, 7, 0.6)); }
+        100% { transform: scale(1); opacity: 0.9; }
+    }
+
 
     /* Genel Kart Yapısı (Sıfır Gölge) */
     .excel-dashboard-wrapper .excel-ana-kart {
@@ -129,7 +200,9 @@
     .excel-table .excel-group-gider-th { background-color: #ffebee; color: #c62828; }
     .excel-table .excel-group-nakit-th { background-color: #fff3e0; color: #e65100; }
     .excel-table .excel-group-tasarruf-th { background-color: #e3f2fd; color: #1565c0; }
+    .excel-table .excel-group-ktasarruf-th { background-color: #c6dff1; color: #1565c0; }
     .excel-table .excel-group-yatirim-th { background-color: #f3e5f5; color: #6a1b9a; }
+    .excel-table .excel-group-kyatirim-th { background-color: #ebd8ed; color: #6a1b9a; }
 
     .excel-table .excel-gelir-hucre { background-color: #e8f5e9; color: #2e7d32; }
     .excel-table .excel-faiz-hucre { background-color: #d4edda; color: #155724; }
@@ -155,8 +228,8 @@
     /* Aktif Dönem Satırı Pastel Vurgusu */
     .excel-table .excel-aktif-satir { background-color: #fff9db !important; font-weight: 600; }
     .excel-table .excel-aktif-satir td { color: #495057 !important; }
-
-
+   
+    
 
 </style>
 
@@ -250,10 +323,10 @@
                                         <tr class="border-bottom border-light" style="height: 22px;">
                                             <td class="p-0 text-secondary fw-semibold"><?= sprintf("%02d", $t_satir['ay_index']) ?>.<?=$aktif_yil;?></td>
                                             <td class="p-0 px-1">
-                                                <input type="number" step="0.01" name="isbank_taksit[]" class="form-control form-control-sm border-0 bg-transparent p-0 text-end text-dark fw-bold isbank-taksit-input" value="<?= number_format($t_satir['isbank_tutar'], 2, '.', '') ?>" oninput="hesaplaCiftKrediKarti()">
+                                                <input type="number" step="0.01" name="isbank_taksit[]" class="form-control form-control-sm border-0 bg-transparent p-0 text-end text-dark fw-bold isbank-taksit-input" value="<?= number_format($t_satir['isbank_tutar'], 2, '.', '') ?>">
                                             </td>
                                             <td class="p-0 px-1">
-                                                <input type="number" step="0.01" name="vakif_taksit[]" class="form-control form-control-sm border-0 bg-transparent p-0 text-end text-dark fw-bold vakif-taksit-input" value="<?= number_format($t_satir['vakif_tutar'], 2, '.', '') ?>" oninput="hesaplaCiftKrediKarti()">
+                                                <input type="number" step="0.01" name="vakif_taksit[]" class="form-control form-control-sm border-0 bg-transparent p-0 text-end text-dark fw-bold vakif-taksit-input" value="<?= number_format($t_satir['vakif_tutar'], 2, '.', '') ?>">
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -290,42 +363,292 @@
                         </button>
 
                     </div>
+
+
+
                     <div class="card-body p-2">
                         <table class="table table-sm table-borderless align-middle mb-0" style="table-layout: fixed;">
+                            <thead>
+                                <tr class="border-bottom border-light text-center fw-bold text-muted">
+                                    <th style="width: 32%; text-align: left;" class="p-0 pb-1">AÇIKLAMA</th>
+                                    <th style="width: 34%; color: #004b87;" class="p-0 pb-1">İŞBANK (A)</th>
+                                    <th style="width: 34%; color: #b38f00;" class="p-0 pb-1">VAKIF (Ö)</th>
+                                </tr>
+                            </thead>
+
+
                             <tbody>
+                                <!-- SATIR 1: GELECEK DÖNEM TAKSİT GÖSTERGELERİ -->
                                 <tr class="border-bottom border-light" style="height: 22px; background-color: #fcfcfc;">
-                                    <td class="p-0 ps-1 text-muted fw-semibold">Döneme Ait Taksit</td>
-                                    <td class="p-0 px-1"><input type="text" id="isbank_aktif_taksit_gosterge" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-dark font-monospace" readonly></td>
-                                    <td class="p-0 px-1"><input type="text" id="vakif_aktif_taksit_gosterge" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-dark font-monospace" readonly></td>
+                                    <td class="p-0 ps-1 text-muted fw-semibold" style="font-size:10px; vertical-align: middle;">Gelecek Dönem Taksit</td>
+                                    <td class="p-0 px-1">
+                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-dark font-monospace" 
+                                            readonly value="<?= number_format($isbank_aktif_taksit ?? 0, 2, ',', '.') ?> ₺" 
+                                            style="background-color: #e9ecef !important; font-size:10px !important;">
+                                    </td>
+                                    <td class="p-0 px-1">
+                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-dark font-monospace" 
+                                            readonly value="<?= number_format($vakif_aktif_taksit ?? 0, 2, ',', '.') ?> ₺" 
+                                            style="background-color: #e9ecef !important; font-size:10px !important;">
+                                    </td>
                                 </tr>
-                                <tr class="border-bottom border-light" style="height: 22px;">
-                                    <td class="p-0 ps-1 text-muted">Dönem İçi Harc.</td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="isbank_donem_ici" id="isbank_donem_ici" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-danger font-monospace" value="<?= $cc_meta['isbank_donem_ici'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="vakif_donem_ici" id="vakif_donem_ici" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-danger font-monospace" value="<?= $cc_meta['vakif_donem_ici'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
+
+                                <!-- SATIR 2: DÖNEM İÇİ HARCAMA ALANLARI -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Dönem İçi Harc.</td>
+                                    
+                                    <!-- İŞ BANKASI -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_isbank_active = (isset($cc_meta['isbank']['donem_ici']) && $cc_meta['isbank']['donem_ici'] > 0); 
+                                            $isbank_val = $is_isbank_active ? $cc_meta['isbank']['donem_ici'] : ($kkart['isbank']['donem_ici'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="isbank-donem-ici-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_isbank_active ? 'text-danger bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($isbank_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_isbank_active ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_isbank_active ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'donem_ici', this.value)">
+                                    </td>
+                                    
+                                    <!-- VAKIFBANK -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_vakif_active = (isset($cc_meta['vakifbank']['donem_ici']) && $cc_meta['vakifbank']['donem_ici'] > 0); 
+                                            $vakif_val = $is_vakif_active ? $cc_meta['vakifbank']['donem_ici'] : ($kkart['vakifbank']['donem_ici'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="vakif-donem-ici-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_vakif_active ? 'text-danger bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($vakif_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_vakif_active ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_vakif_active ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'donem_ici', this.value)">
+                                    </td>
                                 </tr>
-                                <tr class="border-bottom border-light" style="height: 22px;">
-                                    <td class="p-0 ps-1 text-muted">Provizyonda Bek.</td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="isbank_provizyon" id="isbank_provizyon" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-medium text-dark font-monospace" value="<?= $cc_meta['isbank_provizyon'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="vakif_provizyon" id="vakif_provizyon" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-medium text-dark font-monospace" value="<?= $cc_meta['vakif_provizyon'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
+
+                                <!-- SATIR 3: PROVİZYONDA BEKLEYEN HARCAMA ALANLARI -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Provizyonda Bek.</td>
+                                    
+                                    <!-- İŞ BANKASI -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_isbank_prov = (isset($cc_meta['isbank']['provizyon']) && $cc_meta['isbank']['provizyon'] > 0); 
+                                            $isbank_prov_val = $is_isbank_prov ? $cc_meta['isbank']['provizyon'] : ($kkart['isbank']['provizyon'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="isbank-provizyon-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_isbank_prov ? 'text-dark bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($isbank_prov_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_isbank_prov ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_isbank_prov ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'provizyon', this.value)">
+                                    </td>
+                                    
+                                    <!-- VAKIFBANK -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_vakif_prov = (isset($cc_meta['vakifbank']['provizyon']) && $cc_meta['vakifbank']['provizyon'] > 0); 
+                                            $vakif_prov_val = $is_vakif_prov ? $cc_meta['vakifbank']['provizyon'] : ($kkart['vakifbank']['provizyon'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="vakif-provizyon-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_vakif_prov ? 'text-warning-emphasis bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($vakif_prov_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_vakif_prov ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_vakif_prov ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'provizyon', this.value)">
+                                    </td>
                                 </tr>
-                                <tr class="border-bottom border-light" style="height: 22px;">
-                                    <td class="p-0 ps-1 text-muted">Döviz Borcu</td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="isbank_doviz" id="isbank_doviz" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-medium text-dark font-monospace" value="<?= $cc_meta['isbank_doviz'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="vakif_doviz" id="vakif_doviz" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-medium text-dark font-monospace" value="<?= $cc_meta['vakif_doviz'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
+
+                                <!-- SATIR 4: KONSOLİDE DÖVİZ BORCU -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Döviz Borcu</td>
+                                    
+                                    <!-- İŞ BANKASI -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_isbank_dov = (isset($cc_meta['isbank']['doviz_borcu']) && $cc_meta['isbank']['doviz_borcu'] > 0); 
+                                            $isbank_dov_val = $is_isbank_dov ? $cc_meta['isbank']['doviz_borcu'] : ($kkart['isbank']['doviz_borcu'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="isbank-doviz-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium font-monospace border rounded <?= $is_isbank_dov ? 'text-dark bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($isbank_dov_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_isbank_dov ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_isbank_dov ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'doviz_borcu', this.value)">
+                                    </td>
+                                    
+                                    <!-- VAKIFBANK -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_vakif_dov = (isset($cc_meta['vakifbank']['doviz_borcu']) && $cc_meta['vakifbank']['doviz_borcu'] > 0); 
+                                            $vakif_dov_val = $is_vakif_dov ? $cc_meta['vakifbank']['doviz_borcu'] : ($kkart['vakifbank']['doviz_borcu'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="vakif-doviz-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium font-monospace border rounded <?= $is_vakif_dov ? 'text-dark bg-white' : 'text-muted' ?>" 
+                                            value="<?= number_format($vakif_dov_val, 2, '.', '') ?>" 
+                                            style="height: 19px; font-size:10px !important; <?= !$is_vakif_dov ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_vakif_dov ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'doviz_borcu', this.value)">
+                                    </td>
                                 </tr>
-                                <tr class="border-bottom border-light" style="height: 22px;">
-                                    <td class="p-0 ps-1 text-muted">Kesinleşen Ekstre</td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="isbank_ekstre" id="isbank_ekstre" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-danger font-monospace" value="<?= $cc_meta['isbank_ekstre'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
-                                    <td class="p-0 px-1"><input type="number" step="0.01" name="vakif_ekstre" id="vakif_ekstre" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-danger font-monospace" value="<?= $cc_meta['vakif_ekstre'] ?>" oninput="hesaplaCiftKrediKarti()"></td>
+                                <!-- SATIR 5: EURO BORCU GİRİŞ HÜCRELERİ (SALT OKUNUR + BALON GÖSTERGELİ) -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Euro Borcu</td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="number" step="0.01" id="isbank-eu-input" readonly
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium text-dark font-monospace border rounded" 
+                                            value="<?= (isset($kkart['isbank']['eu_borcu']) && $kkart['isbank']['eu_borcu'] > 0) ? number_format($kkart['isbank']['eu_borcu'], 2, '.', '') : (isset($cc_meta['isbank']['eu_borcu']) ? number_format($cc_meta['isbank']['eu_borcu'], 2, '.', '') : '0.00') ?>" 
+                                            style="background-color: #e9ecef !important; cursor: not-allowed; height: 19px; font-size:10px !important;" 
+                                            data-bs-toggle="tooltip" data-bs-placement="top" 
+                                            data-bs-title="<?= (isset($kkart['isbank']['eu_borc_tl']) && $kkart['isbank']['eu_borc_tl'] > 0) ? number_format($kkart['isbank']['eu_borc_tl'], 2, ',', '.') : (isset($cc_meta['isbank']['eu_borc_tl']) ? number_format($cc_meta['isbank']['eu_borc_tl'], 2, ',', '.') : '0,00') ?> ₺"
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'eu_borcu', this.value)">
+                                    </td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="number" step="0.01" id="vakif-eu-input" readonly
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium text-dark font-monospace border rounded" 
+                                            value="<?= (isset($kkart['vakifbank']['eu_borcu']) && $kkart['vakifbank']['eu_borcu'] > 0) ? number_format($kkart['vakifbank']['eu_borcu'], 2, '.', '') : (isset($cc_meta['vakifbank']['eu_borcu']) ? number_format($cc_meta['vakifbank']['eu_borcu'], 2, '.', '') : '0.00') ?>" 
+                                            style="background-color: #e9ecef !important; cursor: not-allowed; height: 19px; font-size:10px !important;" 
+                                            data-bs-toggle="tooltip" data-bs-placement="top" 
+                                            data-bs-title="<?= (isset($kkart['vakifbank']['eu_borc_tl']) && $kkart['vakifbank']['eu_borc_tl'] > 0) ? number_format($kkart['vakifbank']['eu_borc_tl'], 2, ',', '.') : (isset($cc_meta['vakifbank']['eu_borc_tl']) ? number_format($cc_meta['vakifbank']['eu_borc_tl'], 2, ',', '.') : '0,00') ?> ₺"
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'eu_borcu', this.value)">
+                                    </td>
+                                </tr>
+
+                                <!-- SATIR 6: DOLAR BORCU GİRİŞ HÜCRELERİ (SALT OKUNUR + BALON GÖSTERGELİ) -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Dolar Borcu</td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="number" step="0.01" id="isbank-usd-input" readonly
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium text-dark font-monospace border rounded" 
+                                            value="<?= (isset($kkart['isbank']['usd_borcu']) && $kkart['isbank']['usd_borcu'] > 0) ? number_format($kkart['isbank']['usd_borcu'], 2, '.', '') : (isset($cc_meta['isbank']['usd_borcu']) ? number_format($cc_meta['isbank']['usd_borcu'], 2, '.', '') : '0.00') ?>" 
+                                            style="background-color: #e9ecef !important; cursor: not-allowed; height: 19px; font-size:10px !important;" 
+                                            data-bs-toggle="tooltip" data-bs-placement="top" 
+                                            data-bs-title="<?= (isset($kkart['isbank']['usd_borc_tl']) && $kkart['isbank']['usd_borc_tl'] > 0) ? number_format($kkart['isbank']['usd_borc_tl'], 2, ',', '.') : (isset($cc_meta['isbank']['usd_borc_tl']) ? number_format($cc_meta['isbank']['usd_borc_tl'], 2, ',', '.') : '0,00') ?> ₺"
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'usd_borcu', this.value)">
+                                    </td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="number" step="0.01" id="vakif-usd-input" readonly
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-medium text-dark font-monospace border rounded" 
+                                            value="<?= (isset($kkart['vakifbank']['usd_borcu']) && $kkart['vakifbank']['usd_borcu'] > 0) ? number_format($kkart['vakifbank']['usd_borcu'], 2, '.', '') : (isset($cc_meta['vakifbank']['usd_borcu']) ? number_format($cc_meta['vakifbank']['usd_borcu'], 2, '.', '') : '0.00') ?>" 
+                                            style="background-color: #e9ecef !important; cursor: not-allowed; height: 19px; font-size:10px !important;" 
+                                            data-bs-toggle="tooltip" data-bs-placement="top" 
+                                            data-bs-title="<?= (isset($kkart['vakifbank']['usd_borc_tl']) && $kkart['vakifbank']['usd_borc_tl'] > 0) ? number_format($kkart['vakifbank']['usd_borc_tl'], 2, ',', '.') : (isset($cc_meta['vakifbank']['usd_borc_tl']) ? number_format($cc_meta['vakifbank']['usd_borc_tl'], 2, ',', '.') : '0,00') ?> ₺"
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'usd_borcu', this.value)">
+                                    </td>
+                                </tr>
+                                <!-- SATIR 7: KESİNLEŞEN EKSTRE -->
+                                <tr class="border-bottom border-light" style="height: 24px;">
+                                    <td class="p-0 ps-1 text-muted" style="font-size:10px; vertical-align: middle;">Kesinleşen Ekstre</td>
+                                    
+                                    <!-- İŞ BANKASI -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_isbank_kesin = (isset($cc_meta['isbank']['kesinlesen_ekstre']) && $cc_meta['isbank']['kesinlesen_ekstre'] > 0); 
+                                            $isbank_kesin_val = $is_isbank_kesin ? $cc_meta['isbank']['kesinlesen_ekstre'] : ($kkart['isbank']['kesinlesen_ekstre'] ?? 0);
+                                        ?>
+                                        <div class="input-group" style="height: 19px;">
+                                            <input type="number" step="0.01" id="isbank-ekstre-input" 
+                                                class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace <?= $is_isbank_kesin ? 'text-dark bg-white' : 'text-muted' ?>" 
+                                                value="<?= number_format($isbank_kesin_val, 2, '.', '') ?>" 
+                                                style="font-size:10px !important; height: 100%; max-width: 80% !important; border-top-right-radius: 0; border-bottom-right-radius: 0; <?= !$is_isbank_kesin ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                                <?= !$is_isbank_kesin ? 'readonly' : '' ?>
+                                                oninput="cariGirdileriAnlikGuncelle('isbank', 'kesinlesen_ekstre', this.value)">
+                                            <button class="btn btn-xs btn-outline-primary d-flex align-items-center justify-content-center p-0 px-1" 
+                                                type="button" 
+                                                title="İşbank Hesap Kesimi Yap"
+                                                onclick="hesapKesimiYapAksiyonu('isbank')"
+                                                style="font-size: 9px; height: 100%; border-top-left-radius: 0; border-bottom-left-radius: 0; min-height: 19px;">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- VAKIFBANK -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_vakif_kesin = (isset($cc_meta['vakifbank']['kesinlesen_ekstre']) && $cc_meta['vakifbank']['kesinlesen_ekstre'] > 0); 
+                                            $vakif_kesin_val = $is_vakif_kesin ? $cc_meta['vakifbank']['kesinlesen_ekstre'] : ($kkart['vakifbank']['kesinlesen_ekstre'] ?? 0);
+                                        ?>
+                                        <div class="input-group" style="height: 19px;">
+                                            <input type="number" step="0.01" id="vakif-ekstre-input" 
+                                                class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace <?= $is_vakif_kesin ? 'text-warning-emphasis bg-white' : 'text-muted' ?>" 
+                                                value="<?= number_format($vakif_kesin_val, 2, '.', '') ?>" 
+                                                style="font-size:10px !important; max-width: 80% !important; height: 100%; border-top-right-radius: 0; border-bottom-right-radius: 0; <?= !$is_vakif_kesin ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                                <?= !$is_vakif_kesin ? 'readonly' : '' ?>
+                                                oninput="cariGirdileriAnlikGuncelle('vakifbank', 'kesinlesen_ekstre', this.value)">
+                                            <button class="btn btn-xs btn-outline-warning d-flex align-items-center justify-content-center p-0 px-1" 
+                                                type="button" 
+                                                title="Vakıfbank Hesap Kesimi Yap"
+                                                onclick="hesapKesimiYapAksiyonu('vakifbank')"
+                                                style="font-size: 9px; height: 100%; border-top-left-radius: 0; border-bottom-left-radius: 0; min-height: 19px;">
+                                                <i class="bi bi-file-earmark-text"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- SATIR 7: HARCAMA LİMİTİ AYARLAMA HÜCRELERİ -->
+                                <tr class="border-bottom border-light" style="height: 24px; background-color: #fffaf0;">
+                                    <td class="p-0 ps-1 text-dark fw-bold" style="font-size:10px; vertical-align: middle;">Harcama Limiti</td>
+                                    
+                                    <!-- İŞ BANKASI -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_isbank_lmt = (isset($cc_meta['isbank']['harcanabilir_limit']) && $cc_meta['isbank']['harcanabilir_limit'] > 0); 
+                                            $isbank_lmt_val = $is_isbank_lmt ? $cc_meta['isbank']['harcanabilir_limit'] : ($kkart['isbank']['harcanabilir_limit'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="isbank-harcama-limiti-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_isbank_lmt ? 'text-dark bg-white' : 'text-muted' ?>"
+                                            value="<?= number_format($isbank_lmt_val, 2, '.', '') ?>"
+                                            style="height: 19px; font-size:10px !important; <?= !$is_isbank_lmt ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_isbank_lmt ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('isbank', 'harcanabilir_limit', this.value)">
+                                    </td>
+                                    
+                                    <!-- VAKIFBANK -->
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <?php 
+                                            $is_vakif_lmt = (isset($cc_meta['vakifbank']['harcanabilir_limit']) && $cc_meta['vakifbank']['harcanabilir_limit'] > 0); 
+                                            $vakif_lmt_val = $is_vakif_lmt ? $cc_meta['vakifbank']['harcanabilir_limit'] : ($kkart['vakifbank']['harcanabilir_limit'] ?? 0);
+                                        ?>
+                                        <input type="number" step="0.01" id="vakif-harcama-limiti-input" 
+                                            class="form-control form-control-sm text-end p-0 pe-1 fw-bold font-monospace border rounded <?= $is_vakif_lmt ? 'text-dark bg-white' : 'text-muted' ?>"
+                                            value="<?= number_format($vakif_lmt_val, 2, '.', '') ?>"
+                                            style="height: 19px; font-size:10px !important; <?= !$is_vakif_lmt ? 'background-color: #e9ecef !important; cursor: not-allowed;' : '' ?>" 
+                                            <?= !$is_vakif_lmt ? 'readonly' : '' ?>
+                                            oninput="cariGirdileriAnlikGuncelle('vakifbank', 'harcanabilir_limit', this.value)">
+                                    </td>
+                                </tr>
+
+                                <!-- SATIR 8: HARCANABİLİR BAKİYE SONUÇ ALANLARI -->
+                                <tr class="border-bottom border-light" style="height: 24px; background-color: #f4fbf7;">
+                                    <td class="p-0 ps-1 text-success fw-bold" style="font-size:10px; vertical-align: middle;">Harcanabilir Bakiye</td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent p-0 pe-1 text-end fw-bold text-success font-monospace" 
+                                            readonly value="<?= number_format($isbank_harcanabilir ?? 0, 2, ',', '.') ?> ₺" 
+                                            style="background-color: #e9ecef !important; font-size:10px !important; cursor: default;">
+                                    </td>
+                                    <td class="p-0 px-1" style="vertical-align: top; padding-top: 3px !important;">
+                                        <input type="text" class="form-control form-control-sm border-0 bg-transparent p-0 pe-1 text-end fw-bold text-success font-monospace" 
+                                            readonly value="<?= number_format($vakif_harcanabilir ?? 0, 2, ',', '.') ?> ₺" 
+                                            style="background-color: #e9ecef !important; font-size:10px !important; cursor: default;">
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
+
                     <div class="card-footer py-2 px-2 border-0 d-flex align-items-center justify-content-between" style="background-color: #e8f5e9;">
-                        <span class="text-success-emphasis fw-bold">Kesinleşen Dön. Borcu</span>
+                        <span class="text-success-emphasis fw-bold" style="font-size: 11px;">Kesinleşen Dön. Borcu</span>
                         <div class="d-flex gap-1" style="width: 68%;">
-                            <input type="text" id="isbank_kesinlesen_donem" name="isbank_kesinlesen_donem" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-success font-monospace" readonly>
-                            <input type="text" id="vakif_kesinlesen_donem" name="vakif_kesinlesen_donem" class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-success font-monospace" readonly>
+                            <!-- REFORM: Sayfa ilk açıldığında taze PHP değerleri value olarak mühürleniyor, JS anlık artırıp azaltabiliyor -->
+                            <input type="text" id="isbank_kesinlesen_donem" name="isbank_kesinlesen_donem" 
+                                class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-success font-monospace" 
+                                value="<?= isset($cc_meta['isbank_ekstre']) ? number_format($cc_meta['isbank_ekstre'], 2, ',', '.') . ' ₺' : '0,00 ₺' ?>" readonly>
+                                
+                            <input type="text" id="vakif_kesinlesen_donem" name="vakif_kesinlesen_donem" 
+                                class="form-control form-control-sm border-0 bg-transparent p-0 text-end fw-bold text-success font-monospace" 
+                                value="<?= isset($cc_meta['vakif_ekstre']) ? number_format($cc_meta['vakif_ekstre'], 2, ',', '.') . ' ₺' : '0,00 ₺' ?>" readonly>
                         </div>
                     </div>
                 </div>
@@ -404,7 +727,8 @@
 
 
         </div> <!-- SOL SÜTUN COL-MD-3 KAPANIŞI -->
-<!-- 5 -->
+        <!-- 5 -->
+
          <!-- ORTA SÜTUN: GELİR VE GİDER KARTLARI -->
         <div class="col-md-5 butcestyle">
                 
@@ -720,12 +1044,12 @@
                                 }
                             }
                             if ($telefon_satir):
-                                $tel_tutar  = floatval($telefon_satir['tutar']);        // Orijinal sabit bütçe (680.00) Korunur
-                                $tel_odenen = floatval($telefon_satir['odenen_tutar']); // Canlı ödeme matrahı (0 -> 340 -> 680)
+                                $tel_tutar  = floatval($telefon_satir['tutar']);
+                                $tel_odenen = floatval($telefon_satir['odenen_tutar']); 
                                 $tel_id     = intval($telefon_satir['id']);
                                 
-                                $is_birinci_kilitli = ($tel_odenen >= 340.00); 
-                                $is_ikinci_kilitli  = ($tel_odenen >= 680.00); 
+                                $is_birinci_kilitli = ($tel_odenen >= $telefonFaturasiBirimTutari); 
+                                $is_ikinci_kilitli  = ($tel_odenen >= $aylikTelefonFaturasi); 
 
                                 // Tutar sütununa dokunulmadığı için ekrandaki kalan fark canlı hesaplanır
                                 $telefonFaturasiToplamTutar = max(0, $tel_tutar - $tel_odenen);
@@ -921,50 +1245,114 @@
 
         <!-- SAĞ SÜTUN: YENİ DAĞITIM MONİTÖRÜ VE ÜÇLÜ KART YAPISI -->
         <div class="col-md-4 monitorstyle" id="monitor-ekrani">
-            
-            <!-- 💳 ÜST KART: AKILLI FAİZ HESAPLAMA PANELİ -->
-            <div class="card shadow-sm border-0 bg-white mb-2">
-                <div class="card-header bg-white border-bottom border-light py-2 px-3 text-dark fw-bold">
-                    <i class="bi bi-percent text-warning me-1"></i> Faiz Hesapla
-                </div>
-                <div class="card-body p-2">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-2">
-                            <span class="" style="font-size:10px;">Oran %</span>
-                        </div>
-                        <div class="col-4">
-                            <!-- 🎯 DÜZELTME: value parametresi 30 varsayılanı ile PHP'den beslenir -->
-                            <input type="number" id="faiz-orani-input" class="form-control text-center p-1 fw-bold text-dark font-monospace" value="<?= $faiz_orani ?>">
-                        </div>
-                        <div class="col-2">
-                            <span class="" style="font-size:10px;">Gün</span>
-                        </div>
-                        <div class="col-4">
-                            <input type="number" id="faiz-gun-input" class="form-control text-center p-1 fw-bold text-dark font-monospace" value="<?= $faiz_gun_sayisi ?>">
-                        </div>
 
-                    <!-- 🎯 YENİ EKLENEN SATIR: Harici Faiz Başlangıç Bütçesi Girişi -->
-                    <div class="row g-2 align-items-center mt-2 border-top border-light pt-2">
-                        <div class="col-4">
-                            <span class="text-secondary fw-semibold" style="font-size:10px;"><i class="bi bi-bank me-1 text-primary"></i>Kredi Faiz Bütçesi</span>
+
+            <!-- 💳 ÜST KART: AKILLI FAİZ HESAPLAMA PANELİ -->
+            <div class="card shadow-sm border-0 bg-white mb-2" style="border-radius: 10px;">
+                <!-- Canlı Önizleme Göstergeli Kart Başlığı -->
+                <div class="card-header bg-white border-bottom border-light py-2 px-3 text-dark d-flex justify-content-between align-items-center" style="border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                    <span class="fw-bold text-secondary faiz-card-title">
+                        <i class="bi bi-percent text-warning me-1 faiz-title-icon"></i>Faiz Hesapla
+                    </span>
+                    
+                    <!-- Dinamik ve Renk Kodlu Canlı Önizleme Rozetleri -->
+                    <div class="font-monospace d-flex align-items-center gap-1">
+                        <span class="badge-fx border text-secondary">
+                            <span class="fx-prefix">#</span> <span id="pre-kredi-input">0,00 ₺</span>
+                        </span>
+                        <span class="badge-fx border text-secondary">
+                            <span class="fx-prefix">A</span> <span id="pre-isbank-a">0,00 ₺</span>
+                        </span>
+                        <span class="badge-fx border text-secondary">
+                            <span class="fx-prefix">Ö</span> <span id="pre-isbank-o">0,00 ₺</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="card-body p-3">
+                    <!-- İlk Satır Grubu: Oran ve Gün Girişleri -->
+                    <div class="row g-2 align-items-center mb-2">
+                        <div class="col-2">
+                            <span class="faiz-input-label">Oran %</span>
                         </div>
-                        <div class="col-8">
-                            <input type="number" step="0.01" id="faiz-kredi-butcesi-input" class="form-control text-end p-1 fw-bold text-danger font-monospace" value="<?= $evKredisiHam  ?>" style="font-size:11px !important;">
+                        <div class="col-4">
+                            <input type="number" id="faiz-orani-input" class="form-control text-center p-1 fw-bold text-dark font-monospace faiz-input-style" style="font-size: 12px;" value="<?= htmlspecialchars($faiz_orani ?? 30) ?>">
+                        </div>
+                        <div class="col-2 text-end pe-2">
+                            <span class="faiz-input-label">Gün</span>
+                        </div>
+                        <div class="col-4">
+                            <input type="number" id="faiz-gun-input" class="form-control text-center p-1 fw-bold text-dark font-monospace faiz-input-style" style="font-size: 12px;" value="<?= htmlspecialchars($faiz_gun_sayisi ?? 0) ?>">
                         </div>
                     </div>
 
-                    <!-- 🚀 YENİ KUPON ÖDEMELİ FAİZ AKTAR BUTONU -->
-                    <div class="d-grid gap-2 mt-2">
-                        <button type="button" id="faiz-aktar-btn" class="btn btn-sm btn-success fw-bold text-white shadow-xs" style="font-size:11px;" <?= ($faiz_gun_sayisi <= 0) ? 'disabled' : '' ?>>
+                    <!-- İkinci Satır Grubu: Harici Kredi Faiz Bütçesi Girişi -->
+                    <div class="row g-2 align-items-center border-top border-light pt-2 mt-2">
+                        <div class="col-4">
+                            <span class="faiz-input-label d-flex align-items-center"><i class="bi bi-bank me-1 text-primary"></i>Kredi Bütçesi</span>
+                        </div>
+                        <div class="col-8">
+                            <input type="number" step="0.01" id="faiz-kredi-butcesi-input" class="form-control text-end p-1 fw-bold text-danger font-monospace faiz-input-style" value="<?= htmlspecialchars($evKredisiHam ?? 0) ?>" style="font-size:12px !important;">
+                        </div>
+                    </div>
+
+                    <!-- Üçüncü Satır Grubu: Aktarım Modalı Tetikleyici Buton -->
+                    <div class="d-grid gap-2 mt-3">
+                        <button type="button" class="btn btn-sm btn-success fw-bold text-white shadow-sm" style="font-size:11px; border-radius: 6px; letter-spacing: 0.3px;" data-bs-toggle="modal" data-bs-target="#faizAktarSecimModal" id="faiz-aktar-modal-ac-btn">
                             <i class="bi bi-safe2-fill me-1 text-warning"></i> ELDE EDİLEN FAİZLERİ HESAPLARA AKTAR
                         </button>
                     </div>
-
-                    </div>
-    
                 </div>
             </div>
-           
+
+
+
+            <!-- ==================================================== -->
+            <!-- 🎯 FAİZ AKTARIM MODALI -->
+            <!-- ==================================================== -->
+            <div class="modal fade" id="faizAktarSecimModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header py-2 px-3 border-bottom border-light">
+                            <h6 class="modal-title fw-bold text-dark" style="font-size:13px;">
+                                <i class="bi bi-sliders text-success me-1"></i> Faiz Aktarım Detayları
+                            </h6>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="font-size: 10px;"></button>
+                        </div>
+                        <div class="modal-body p-3" style="font-size: 12px;">
+                            <form id="faiz-aktar-secimli-form" onsubmit="return false;">
+                                
+                                <!-- Hesap Seçimi -->
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary fw-semibold mb-1">Kaynak / Hedef Hesap Seçimi</label>
+                                    <select class="form-select form-select-sm fw-bold text-dark" id="modal-aktar-havuz-secim" name="havuz_kodu">
+                                        <option value="" selected disabled>-- Hesap Seçiniz --</option>
+                                        <option value="isbank_a">İşbank (A)</option>
+                                        <option value="isbank_o">İşbank (Ö)</option>
+                                        <option value="all">Tümünü Aktar (A + Ö)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Esnek Tutar Alanı -->
+                                <div class="mb-3">
+                                    <label class="form-label text-secondary fw-semibold mb-1">Aktarılacak Faiz Tutarı (₺)</label>
+                                    <input type="number" step="0.01" min="0.01" class="form-control form-control-sm text-end fw-bold text-success font-monospace" id="modal-aktar-tutar-input" name="aktarilacak_tutar" placeholder="0.00" disabled>
+                                    <div class="form-text text-muted text-end" style="font-size: 9px;" id="modal-aktar-uyari-metni">Lütfen önce bir hesap seçin.</div>
+                                </div>
+
+                                <!-- Kesin Onay Butonu -->
+                                <div class="d-grid mt-2">
+                                    <button type="button" id="kesin-faiz-aktar-onay-btn" class="btn btn-sm btn-success fw-bold text-white" disabled>
+                                        <i class="bi bi-check-circle me-1"></i> AKTARIMI ONAYLA VE MÜHÜRLE
+                                    </button>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
 
             <!-- 💳 ORTA KART: FİNANSAL LİKİDİTE HAVUZLARI MATRİSİ -->
             <div class="card shadow-sm border-0 bg-white mb-2">
@@ -1080,7 +1468,7 @@
                                 <span class="text-muted" style="font-size: 8px;">İşbank (A) Ana Havuz Kilitli</span>
                             </div>
                             <!-- 🎯 REFORM: data-anapara özniteliğiyle veritabanı canlı verisi mühürlendi -->
-                            <h5 id="canli-ana-yatirim-bakiye" data-anapara="<?= $ana_isbank_a_anapara ?>" class="fw-bold mb-0 font-monospace" style="color: #6a1b9a; font-size: 13.5px;">0,00 ₺</h5>
+                            <h5 id="canli-ana-yatirim-bakiye" data-anapara="<?= $tasarruf_tutari ?>" class="fw-bold mb-0 font-monospace" style="color: #6a1b9a; font-size: 13.5px;">0,00 ₺</h5>
                         </div>
                     </div>
                 </div>
@@ -1173,13 +1561,21 @@
                             <span id="js_dashboard_kk_toplam_borclari" class="fw-bold font-monospace" style="color: #0d47a1; font-size: 13.5px;">0,00 ₺</span>
                         </div>
                         <div class="row g-0 text-center" style="font-size: 9px; line-height: 1.2;">
-                            <div class="col-6 border-end border-light text-start ps-1">
+                            <div class="col-4 border-end border-light text-start ps-1">
                                 <span class="text-muted d-block" style="font-size: 7.5px;">KESINLEŞEN EKSTRELER</span>
-                                <span id="js_dashboard_kesinlesen_ekstre" class="fw-bold text-dark font-monospace">0,00 ₺</span>
+                                <span id="js_dashboard_kesinlesen_ekstre" class="fw-bold text-danger font-monospace">0,00 ₺</span>
                             </div>
-                            <div class="col-6 text-end pe-1">
+                            <div class="col-2 border-end border-light px-0.5">
+                                <span class="text-muted d-block" style="font-size: 7px;">İŞBANKASI K.EKSTRE</span>
+                                <span id="js_dashboard_isbank_kekstre" class="fw-bold font-monospace">0,00 ₺</span>
+                            </div>
+                            <div class="col-2 border-end border-light px-0.5">
+                                <span class="text-muted d-block" style="font-size: 7px;">VAKIFBANK K.EKSTRE</span>
+                                <span id="js_dashboard_vakif_kekstre" class="fw-bold font-monospace">0,00 ₺</span>
+                            </div>
+                            <div class="col-4 text-end pe-1">
                                 <span class="text-muted d-block" style="font-size: 7.5px;">KALAN TAKSİTLER TOPLAMI</span>
-                                <span id="js_yeni_kk_borcumuz" class="fw-bold text-dark font-monospace">0,00 ₺</span>
+                                <span id="js_yeni_kk_borcumuz" class="fw-bold text-danger font-monospace">0,00 ₺</span>
                             </div>
                         </div>
                     </div>
@@ -1269,18 +1665,20 @@
             <input type="hidden" id="js_fatura_bloke_miktari" value="<?= $zorunlu_fatura_bloke_tutari ?>">
         </div>
 
+        
+
 
     </div> <!-- 1. SATIR Row Kapanışı -->
 <!-- 9 -->
 
+  
 
-
-<!-- 🎯 PARÇA 1: SIFIR INLINE CSS - EXCEL RAPORU BAŞLIK VE BLOK TOPLAMLARI -->
+<!--  
 <div class="row g-3 mt-2 mb-4 excel-dashboard-wrapper">
     <div class="col-12">
         <div class="card excel-ana-kart bg-white">
             
-            <!-- Başlık Alanı -->
+
             <div class="card-header excel-baslik text-white d-flex justify-content-between align-items-center">
                 <span class="fw-bold d-inline-flex align-items-center excel-baslik-metin">
                     <i class="fas fa-th text-success me-2 excel-baslik-ikon"></i> Finansal Dönemler Arşiv Raporu (Excel Görünümü)
@@ -1293,59 +1691,61 @@
                     <table class="table table-sm table-bordered align-middle text-center mb-0 excel-table">
                         <thead>
                             
-                            <!-- SATIR 1: EXCEL ÜST BÜTÜNLEŞİK BLOK TOPLAMLARI (PHP Hesaplamaları) -->
+
                             <?php 
                                 $yillik_butun_gelirler_toplami = $tepe_toplamlar['maas_o'] + $tepe_toplamlar['maas_a'] + $tepe_toplamlar['maktu_mesai'] + $tepe_toplamlar['ek_gelir'] + $tepe_toplamlar['faiz_gelir'];
                                 $yillik_butun_giderler_toplami = $tepe_toplamlar['kredi_karti_o'] + $tepe_toplamlar['kredi_karti_a'] + $tepe_toplamlar['ev_kredisi'] + $tepe_toplamlar['aidat'] + $tepe_toplamlar['harcama_nakit'] + $tepe_toplamlar['fatura_nakit'];
                                 $yillik_butun_tasarruf_toplami = $yillik_butun_gelirler_toplami - $yillik_butun_giderler_toplami;
+                                $genel_tasarruf_toplami = $yillik_butun_gelirler_toplami - $yillik_butun_giderler_toplami + $tepe_toplamlar['devir_bakiye'];
                                 $yillik_butun_yatirim_toplami = $tepe_toplamlar['yatirim_tutari'] ?? 0;
+                                $genel_yatirim_toplami = $yillik_butun_yatirim_toplami + $tepe_toplamlar['devir_yatirim'];
                             ?>
                             <tr class="excel-blok-toplam-satir">
-                                <th class="text-white bg-koyu-kemik border-dark">YILLIK BLOK</th>
+                                <th class="excel-group-tasarruf-th text-center"></th>
                                 <th colspan="5" class="excel-group-gelir-th text-center"><?= number_format($yillik_butun_gelirler_toplami, 2, ',', '.') ?> ₺</th>
                                 <th colspan="5" class="excel-group-gider-th text-center"><?= number_format($yillik_butun_giderler_toplami, 2, ',', '.') ?> ₺</th>
                                 <th colspan="6" class="excel-group-nakit-th text-center"><?= number_format($tepe_toplamlar['harcama_nakit'], 2, ',', '.') ?> ₺</th>
-                                <th class="excel-group-tasarruf-th text-center"><?= number_format($yillik_butun_tasarruf_toplami, 2, ',', '.') ?> ₺</th>
-                                <th class="excel-group-yatirim-th text-center"><?= number_format($yillik_butun_yatirim_toplami, 2, ',', '.') ?> ₺</th>
+                                <th class="excel-group-tasarruf-th text-center"><?= number_format($genel_tasarruf_toplami, 2, ',', '.') ?> ₺</th>
+                                <th class="excel-group-yatirim-th text-center"><?= number_format($genel_yatirim_toplami, 2, ',', '.') ?> ₺</th>
                             </tr>
 
-                            <!-- SATIR 2: ANA GRUP BAŞLIKLARI -->
+
                             <tr class="fw-bold text-uppercase excel-ana-grup-satir">
-                                <th rowspan="1" class="text-white bg-gri-kemik">DÖNEM</th>
+                                <th rowspan="1" class="excel-group-tasarruf-th"><?= $aktif_yil - 1 . " - DEVİR"?></th>
                                 <th colspan="5" class="excel-group-gelir-th">GELİRLER TOPLAMI</th>
                                 <th colspan="5" class="excel-group-gider-th">GİDERLER TOPLAMI</th>
                                 <th colspan="6" class="excel-group-nakit-th">FATURALAR TOPLAMI</th>
-                                <th rowspan="1" class="excel-group-tasarruf-th">TASARRUF</th>
-                                <th rowspan="1" class="excel-group-yatirim-th">YATIRIM</th>
+                                <th rowspan="1" class="excel-group-tasarruf-th">Devir: <?= number_format( $tepe_toplamlar['devir_bakiye'], 2, ',', '.') ?> ₺</th>
+                                <th rowspan="1" class="excel-group-yatirim-th">Devir: <?= number_format( $tepe_toplamlar['devir_yatirim'], 2, ',', '.') ?> ₺</th>
                             </tr>
                             
-                            <!-- SATIR 3: SÜTUN ALT BAŞLIKLARI -->
+
                             <tr class="excel-head-title fw-bold excel-alt-baslik-satir">
-                                <th class="text-center text-white bg-gri-kemik"></th>
+                                <th class=""></th>
                                 <th>MAAŞ (Ö)</th>
                                 <th>MAAŞ (A)</th>
                                 <th>MAKTU MESAİ</th>
                                 <th>EK GELİR</th>
-                                <th class="faiz-baslik-hucre">FAİZ GELİRİ</th>
+                                <th class="faiz-baslik-hucre">FAİZ G.</th>
                                 <th>KREDİ KARTI (Ö)</th>
                                 <th>KREDİ KARTI (A)</th>
                                 <th>KREDİ</th>
                                 <th>AİDAT</th>
-                                <th>HARCAMA (NAKİT)</th>
+                                <th>NAKİT HAR.</th>
                                 <th class="fatura-nakit-baslik-hucre">F. TOPLAM</th>
                                 <th>ELEKTRİK</th>
                                 <th>SU</th>
                                 <th>DOĞALGAZ</th>
                                 <th>TELEFON</th>
                                 <th>İNTERNET</th>
-                                <th class="excel-group-tasarruf-th">TUTARI</th>
-                                <th class="excel-group-yatirim-th">TUTARI</th>
+                                <th class="excel-group-tasarruf-th">TASARRUF</th>
+                                <th class="excel-group-yatirim-th">YATIRIM</th>
                             </tr>
 
 
-                                                        <!-- 🎯 PARÇA 2: SÜTUN BAZLI MİKRO TOPLAM KUTUCUKLARI VE 12 AYLIK DÖNGÜ -->
+
                             <tr class="tepe-kutu text-end font-monospace fw-bold excel-mikro-toplam-satir">
-                                <td class="text-center text-white bg-koyu-kemik border-dark">SÜTUN TOP.</td>
+                                <td class="text-center"></td>
                                 <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maas_o'], 2, ',', '.') ?> ₺</td>
                                 <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maas_a'], 2, ',', '.') ?> ₺</td>
                                 <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maktu_mesai'], 2, ',', '.') ?> ₺</td>
@@ -1381,6 +1781,8 @@
                                 
                                 $s_tasarruf = $s_gelir - $s_gider;
                                 $s_yatirim = floatval($s_veri['yatirim_tutari'] ?? 0);
+
+                                
                                 
                                 $satir_sinifi = $is_aktif_ay ? 'excel-aktif-satir' : 'excel-standart-satir';
                             ?>
@@ -1399,7 +1801,7 @@
                                     <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['ev_kredisi'] ?? 0) > 0 ? number_format($s_veri['ev_kredisi'], 2, ',', '.') . ' ₺' : '' ?></td>
                                     <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['aidat'] ?? 0) > 0 ? number_format($s_veri['aidat'], 2, ',', '.') . ' ₺' : '' ?></td>
                                     <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['harcama_nakit'] ?? 0) > 0 ? number_format($s_veri['harcama_nakit'], 2, ',', '.') . ' ₺' : '' ?></td>
-                                    <!-- 🎯 PARÇA 3: FATURA NAKİT TOPLAMI, TABLO KAPANIŞI VE MERKEZİ CSS ALANI -->
+
                                     <td class="text-end font-monospace text-dark fw-bold text-center excel-fatura-nakit-govde-hucre"><?= $satir_var_mi && $s_fatura_nakit_toplami > 0 ? number_format($s_fatura_nakit_toplami, 2, ',', '.') . ' ₺' : '0,00 ₺' ?></td>
                                     
                                     <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['elektrik'] ?? 0) > 0 ? number_format($s_veri['elektrik'], 2, ',', '.') . ' ₺' : '' ?></td>
@@ -1426,7 +1828,224 @@
         </div>
     </div>
 </div>
+-->
 
+<div class="container-fluid py-3 solsutunstyle">
+    <!-- Üst Kontrol Barı -->
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-2 rounded shadow-sm border border-light">
+        <h5 class="m-0 fw-bold text-dark d-flex align-items-center" style="font-size: 14px;">
+            <i class="bi bi-calendar-check text-primary me-2"></i> 
+            Dönem Finansal Takip 
+            <span class="badge bg-primary ms-2 font-monospace" style="font-size: 11px;">
+                <?= htmlspecialchars($aktif_yil) ?> Yılı Arşivi
+            </span>
+        </h5>
+        <div>
+            <!-- ÖZELLİK 2: Eski butonlar kaldırıldı, yerine GET tetikleyen temiz Selectbox eklendi -->
+            <!-- <div class="input-group input-group-sm">
+                <label class="input-group-text bg-light fw-bold text-secondary" for="yil-secimi" style="font-size: 11px;">
+                    <i class="bi bi-filter me-1"></i> Yıl Seç:
+                </label>
+                <select class="form-select form-select-sm fw-bold text-dark" id="yil-secimi" style="font-size: 11px; width: 100px;" onchange="location.href='?donem=' + this.value;">
+                    <?php
+                    foreach ($selectbox_years as $donem) {
+                        $selected = ($donem == $aktif_yil) ? 'selected' : '';
+                        echo "<option value='{$donem}' {$selected}>{$donem}</option>";
+                    }
+                    ?>
+                </select>
+            </div> -->
+        </div>
+    </div>
+
+    <!-- 🎯 PARÇA 1: SIFIR INLINE CSS - EXCEL RAPORU BAŞLIK VE BLOK TOPLAMLARI -->
+    <div class="row g-3 mt-2 mb-4 excel-dashboard-wrapper">
+        <div class="col-12">
+            <div class="card excel-ana-kart bg-white">
+                
+                <!-- Başlık Alanı -->
+                <div class="card-header excel-baslik text-white d-flex justify-content-between align-items-center">
+                    <span class="fw-bold d-inline-flex align-items-center excel-baslik-metin">
+                        <i class="fas fa-th text-success me-2 excel-baslik-ikon"></i> Finansal Dönemler Arşiv Raporu
+                    </span>
+                    <span class="badge excel-baslik-rozet font-monospace"><?= number_format(($yillik_toplam['genel_tasarruf']-$yillik_toplam['genel_yatirim'])+($kumulatif_net_tasarruf-$kumulatif_net_yatirim), 2, ',', '.') ?> ₺</span>
+                </div>
+
+                <div class="card-body p-2 bg-temiz-taban">
+                    <div class="table-responsive excel-temiz-responsive">
+                        <table class="table table-sm table-bordered align-middle text-center mb-0 excel-table">
+                            <thead>
+
+                                <!-- SATIR 1: EXCEL ÜST BÜTÜNLEŞİK BLOK TOPLAMLARI (PHP Hesaplamaları) -->
+                                <tr class="excel-blok-toplam-satir">
+                                    <th class="excel-group-tasarruf-th text-center"></th>
+                                    <th colspan="5" class="excel-group-gelir-th text-center"></th>
+                                    <th colspan="5" class="excel-group-gider-th text-center"></th>
+                                    <th colspan="6" class="excel-group-ktasarruf text-end"><?= $aktif_yil . " Yıl Sonu İtibariyle Devredecek Tasarruf Miktarı"?></th>
+                                    <th colspan="6" class="excel-group-ktasarruf text-center"><?= number_format($kumulatif_net_tasarruf + $yillik_toplam['butun_tasarruf'] - $kumulatif_net_yatirim - $yillik_toplam['butun_yatirim'], 2, ',', '.') ?> ₺</th>
+
+                                </tr>
+                                
+                                <!-- SATIR 1: EXCEL ÜST BÜTÜNLEŞİK BLOK TOPLAMLARI (PHP Hesaplamaları) -->
+                                <tr class="excel-blok-toplam-satir">
+                                    <th class="excel-group-ktasarruf-th text-center"></th>
+                                    <th colspan="5" class="excel-group-gelir-th text-center"><?= number_format($yillik_toplam['butun_gelir'], 2, ',', '.') ?> ₺</th>
+                                    <th colspan="5" class="excel-group-gider-th text-center"><?= number_format($yillik_toplam['butun_gider'], 2, ',', '.') ?> ₺</th>
+                                    <th colspan="6" class="excel-group-ktasarruf text-end"><?= $aktif_yil . " Dönem Sonu İtibariyle Tasarruf/Yatırım Kümülatif Toplamı" ?></th>
+                                    <th class="excel-group-ktasarruf-th text-center"><?= number_format($kumulatif_net_tasarruf + $yillik_toplam['butun_tasarruf'], 2, ',', '.') ?> ₺</th>
+                                    <th class="excel-group-kyatirim-th text-center"><?= number_format($kumulatif_net_yatirim + $yillik_toplam['butun_yatirim'], 2, ',', '.') ?> ₺</th>
+                                </tr>
+
+                                <!-- SATIR 2: ANA GRUP BAŞLIKLARI -->
+                                <tr class="fw-bold text-uppercase excel-ana-grup-satir">
+                                    <th rowspan="1" class="excel-group-ktasarruf-th"></th>
+                                    <th colspan="5" class="excel-group-gelir-th">GELİRLER TOPLAMI</th>
+                                    <th colspan="5" class="excel-group-gider-th">GİDERLER TOPLAMI</th>
+                                    <th colspan="6" class="excel-group-ktasarruf-th text-end"><?=$aktif_yil - 1 . " ve Öncesi Dönem Tasarruf/Yatırım Verileri (Kümülatif)" ?></th>
+                                    <th class="excel-group-tasarruf-th text-center"><?= number_format($kumulatif_net_tasarruf, 2, ',', '.') ?> ₺</th>
+                                    <th class="excel-group-yatirim-th text-center"><?= number_format($kumulatif_net_yatirim, 2, ',', '.') ?> ₺</th>
+                                </tr>
+                                <tr class="tepe-kutu text-end font-monospace fw-bold excel-mikro-toplam-satir">
+                                    <td class="text-center"></td>
+                                    <td colspan="5" class="text-center"></td>
+                                    <td colspan="5" class="text-center"></td>
+                                    <td colspan="6" class="excel-group-tasarruf-th text-end"><?= $aktif_yil - 1 . " Yılı Devir"?></td>
+                                    <td class="excel-group-tasarruf-th"><?= number_format($kumulatif_net_tasarruf-$kumulatif_net_yatirim, 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-group-yatirim-th">-</td>
+                                </tr>
+                                
+                                <!-- SATIR 3: SÜTUN ALT BAŞLIKLARI -->
+                                <tr class="excel-head-title fw-bold excel-alt-baslik-satir">
+                                    <th class=""></th>
+                                    <th>MAAŞ (Ö)</th>
+                                    <th>MAAŞ (A)</th>
+                                    <th>MAKTU MESAİ</th>
+                                    <th>EK GELİR</th>
+                                    <th class="faiz-baslik-hucre">FAİZ G.</th>
+                                    <th>KREDİ KARTI (Ö)</th>
+                                    <th>KREDİ KARTI (A)</th>
+                                    <th>KREDİ</th>
+                                    <th>AİDAT</th>
+                                    <th>NAKİT HAR.</th>
+                                    <th class="fatura-nakit-baslik-hucre">F. TOPLAM</th>
+                                    <th>ELEKTRİK</th>
+                                    <th>SU</th>
+                                    <th>DOĞALGAZ</th>
+                                    <th>TELEFON</th>
+                                    <th>İNTERNET</th>
+                                    <th class="excel-group-ktasarruf-th">TASARRUF</th>
+                                    <th class="excel-group-kyatirim-th">YATIRIM</th>
+                                </tr>
+
+
+                                <!-- 🎯 PARÇA 2: SÜTUN BAZLI MİKRO TOPLAM KUTUCUKLARI VE 12 AYLIK DÖNGÜ -->
+                                <tr class="tepe-kutu text-end font-monospace fw-bold excel-mikro-toplam-satir">
+                                    <td class="text-center"></td>
+                                    <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maas_o'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maas_a'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['maktu_mesai'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gelir-hucre"><?= number_format($tepe_toplamlar['ek_gelir'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-faiz-hucre"><?= number_format($tepe_toplamlar['faiz_gelir'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gider-hucre"><?= number_format($tepe_toplamlar['kredi_karti_o'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gider-hucre"><?= number_format($tepe_toplamlar['kredi_karti_a'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gider-hucre"><?= number_format($tepe_toplamlar['ev_kredisi'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gider-hucre"><?= number_format($tepe_toplamlar['aidat'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-gider-hucre"><?= number_format($tepe_toplamlar['harcama_nakit'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-nakit-toplam-hucre"><?= number_format($tepe_toplamlar['fatura_nakit'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-detay-th-hucre"><?= number_format($tepe_toplamlar['elektrik'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-detay-th-hucre"><?= number_format($tepe_toplamlar['su'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-detay-th-hucre"><?= number_format($tepe_toplamlar['dogalgaz'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-detay-th-hucre"><?= number_format($tepe_toplamlar['telefon'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-fatura-detay-th-hucre"><?= number_format($tepe_toplamlar['internet'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-group-tasarruf-th"><?= number_format($yillik_toplam['butun_tasarruf'], 2, ',', '.') ?> ₺</td>
+                                    <td class="excel-group-yatirim-th"><?= number_format($yillik_toplam['butun_yatirim'], 2, ',', '.') ?> ₺</td>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <?php for ($i = 1; $i <= 12; $i++):
+                                    $satir_var_mi = isset($yillik_matris[$i]);
+                                    $s_veri = $satir_var_mi ? $yillik_matris[$i] : [];
+                                    $is_aktif_ay = ($aktif_donem === sprintf("%d-%02d", $aktif_yil, $i));
+
+                                    $s_canli_faiz = $satir_var_mi ? floatval($s_veri['faiz_gelir'] ?? 0) : 0;
+
+                                    $s_fatura_nakit_toplami = $satir_var_mi
+                                        ? floatval($s_veri['elektrik'] ?? 0)
+                                        + floatval($s_veri['su'] ?? 0)
+                                        + floatval($s_veri['dogalgaz'] ?? 0)
+                                        + floatval($s_veri['telefon'] ?? 0)
+                                        + floatval($s_veri['internet'] ?? 0)
+                                        : 0;
+
+                                    $s_gelir = $satir_var_mi
+                                        ? floatval($s_veri['maas_o'] ?? 0)
+                                        + floatval($s_veri['maas_a'] ?? 0)
+                                        + floatval($s_veri['maktu_mesai'] ?? 0)
+                                        + floatval($s_veri['ek_gelir'] ?? 0)
+                                        + $s_canli_faiz
+                                        : 0;
+
+                                    $s_gider = $satir_var_mi
+                                        ? floatval($s_veri['kredi_karti_o'] ?? 0)
+                                        + floatval($s_veri['kredi_karti_a'] ?? 0)
+                                        + floatval($s_veri['ev_kredisi'] ?? 0)
+                                        + floatval($s_veri['aidat'] ?? 0)
+                                        + floatval($s_veri['harcama_nakit'] ?? 0)
+                                        + $s_fatura_nakit_toplami
+                                        : 0;
+
+                                    $s_tasarruf = $s_gelir - $s_gider;
+                                    $s_yatirim = $satir_var_mi ? floatval($s_veri['yatirim_tutari'] ?? 0) : 0;
+
+                                    $t_color_class = $s_tasarruf >= 0 ? 'excel-pozitif-tutar' : 'excel-negatif-tutar';
+                                    $y_color_class = $s_yatirim >= 0 ? 'excel-mor-tutar' : 'excel-negatif-tutar';
+                                    $satir_sinifi = $is_aktif_ay ? 'excel-aktif-satir' : 'excel-standart-satir';
+                                ?>
+                                <tr class="border-bottom border-light excel-govde-satir <?= $satir_sinifi ?>"></td>
+                                    <td class="text-start ps-2 fw-bold text-secondary excel-donem-baslik-hucre">
+                                        <?= $ay_isimleri[$i] ?> <?= $aktif_yil ?>
+                                    </td>
+
+                                    <td class="text-end font-monospace text-success pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['maas_o'] ?? 0) > 0 ? number_format($s_veri['maas_o'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-success pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['maas_a'] ?? 0) > 0 ? number_format($s_veri['maas_a'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-success pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['maktu_mesai'] ?? 0) > 0 ? number_format($s_veri['maktu_mesai'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-success pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['ek_gelir'] ?? 0) > 0 ? number_format($s_veri['ek_gelir'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-success pe-2 excel-v-ortali excel-govde-faiz-baskisi"><?= $s_canli_faiz > 0 ? number_format($s_canli_faiz,2,',','.').' ₺' : '0,00 ₺' ?></td>
+
+                                    <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['kredi_karti_o'] ?? 0) > 0 ? number_format($s_veri['kredi_karti_o'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['kredi_karti_a'] ?? 0) > 0 ? number_format($s_veri['kredi_karti_a'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['ev_kredisi'] ?? 0) > 0 ? number_format($s_veri['ev_kredisi'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['aidat'] ?? 0) > 0 ? number_format($s_veri['aidat'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-danger pe-2 excel-v-ortali"><?= $satir_var_mi && floatval($s_veri['harcama_nakit'] ?? 0) > 0 ? number_format($s_veri['harcama_nakit'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+
+                                    <td class="text-end font-monospace text-dark fw-bold text-center excel-fatura-nakit-govde-hucre"><?= $s_fatura_nakit_toplami > 0 ? number_format($s_fatura_nakit_toplami,2,',','.').' ₺' : '0,00 ₺' ?></td>
+
+                                    <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['elektrik'] ?? 0) > 0 ? number_format($s_veri['elektrik'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['su'] ?? 0) > 0 ? number_format($s_veri['su'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['dogalgaz'] ?? 0) > 0 ? number_format($s_veri['dogalgaz'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['telefon'] ?? 0) > 0 ? number_format($s_veri['telefon'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+                                    <td class="text-end font-monospace text-muted pe-1 excel-fatura-detay-hucre"><?= $satir_var_mi && floatval($s_veri['internet'] ?? 0) > 0 ? number_format($s_veri['internet'],2,',','.').' ₺' : '0,00 ₺' ?></td>
+
+                                    <td class="text-end font-monospace fw-bold pe-2 excel-karsilastirma-hucre <?= $t_color_class ?>">
+                                        <?= $satir_var_mi && $s_gelir > 0 ? number_format($s_tasarruf,2,',','.').' ₺' : '0,00 ₺' ?>
+                                    </td>
+
+                                    <td class="text-end font-monospace fw-bold pe-2 excel-yatirim-hucre <?= $y_color_class ?>">
+                                        <?= $satir_var_mi && $s_gelir > 0 ? number_format($s_yatirim,2,',','.').' ₺' : '0,00 ₺' ?>
+                                    </td>
+                                </tr>
+                                <?php endfor; ?>
+                            </tbody>
+                            
+  
+                        </table>
+                    </div>
+                </div>     
+            </div>
+        </div>
+    </div>
+</div>
 
 
 
@@ -1442,107 +2061,7 @@
 </div> <!-- Container Kapanışı -->
 
 
-<!-- ========================================================================= -->
-<!-- NİHAİ %100 INTERAKTİF FOREX SATIN ALMA POP-UP (MODAL) ARABİRİMİ -->
-<!-- ========================================================================= -->
-<div class="modal fade" id="forexYatirimModal" tabindex="-1" aria-labelledby="forexYatirimModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
-            
-            <!-- Modal Başlık Alanı -->
-            <div class="modal-header bg-dark text-white py-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                <h6 class="modal-title fw-bold text-white mb-0" id="forexYatirimModalLabel">
-                    📝 Döviz & Varlık Satın Alma Terminali
-                </h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
-            </div>
-            
-            <!-- Satın Alma Formu -->
-            <form action="" method="POST" id="forexSatinalForm">
-                <!-- Backend kabul motorunu tetikleyen gizli aksiyon tanımı -->
-                <input type="hidden" name="action" value="interaktif_forex_satinal">
-                
-                <div class="modal-body p-4 text-dark fs-6">
-                    
-                    <!-- 1. Üst Şerit: İşbank (A) Yatırım Ana Havuz Dinamik Bakiyesi -->
-                    <div class="p-3 bg-light rounded-3 border mb-3 d-flex justify-content-between align-items-center shadow-sm">
-                        <span class="fw-bold text-secondary text-uppercase tracking-wide small mb-0">İşbank (A) Havuz Ana Para:</span>
-                        <!-- Değer doğrudan Controller'daki faizsiz anaparadan beslenir -->
-                        <span id="modal-tasarruf-bakiye" class="fw-bold font-monospace fs-5" style="color: #6a1b9a;">
-                            <?= number_format($canli_ana_yatirim_bakiye_tl, 2, ',', '.') ?> ₺
-                        </span>
-                    </div>
 
-                    <!-- 2. Varlık Seçim Alanı -->
-                    <div class="mb-3 text-start">
-                        <label for="modal_doviz_cinsi" class="form-label fw-bold text-secondary small text-uppercase mb-1">Döviz / Varlık Cinsi</label>
-                        <select class="form-select form-select-md fw-semibold text-dark" name="modal_doviz_cinsi" id="modal_doviz_cinsi" required>
-                            <option value="" disabled selected>Varlık Seçiniz...</option>
-                            <option value="USD">USD (Amerikan Doları)</option>
-                            <option value="EUR">EUR (Euro Bölgesi)</option>
-                            <option value="XAU">XAU (Has Altın Gram)</option>
-                        </select>
-                    </div>
-
-                    <!-- 3. Gösterge Kartları (Talep Ettiğiniz Temiz Beyaz Tasarım) -->
-                    <div class="row g-2 mb-3">
-                        <!-- Sol Beyaz Kart: İşlem Kuru -->
-                        <div class="col-6">
-                            <div class="p-3 bg-white rounded-3 border text-center shadow-sm">
-                                <span id="modal_kur_turu_label" class="d-block text-secondary small fw-bold text-uppercase mb-1" style="font-size: 10px; letter-spacing: 0.3px;">Canlı Banka Alış</span>
-                                <h5 id="modal_canli_kur_text" class="fw-bold text-dark font-monospace mb-0" style="font-size: 15px;">0,0000 ₺</h5>
-                            </div>
-                        </div>
-                        <!-- Sağ Beyaz Kart: Maksimum Kapasite -->
-                        <div class="col-6">
-                            <div class="p-3 bg-white rounded-3 border text-center shadow-sm">
-                                <span class="d-block text-secondary small fw-bold text-uppercase mb-1" style="font-size: 10px; letter-spacing: 0.3px;">Maks. Alınabilir</span>
-                                <h5 id="modal_maks_kapasite_text" class="fw-bold text-success font-monospace mb-0" style="font-size: 15px;">0,00</h5>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. Manuel Döviz Kuru Giriş Alanı ( Default Kilitli ) -->
-                    <div class="mb-3 text-start">
-                        <label for="modal_manuel_kur" class="form-label fw-bold text-secondary small text-uppercase mb-1">Manuel İşlem Kuru (Harici Giriş)</label>
-                        <input type="number" class="form-control font-monospace fw-bold text-end" name="modal_manuel_kur" id="modal_manuel_kur" step="0.0001" min="0" placeholder="0.0000 (Canlı kuru ezmek için yazın)" disabled>
-                    </div>
-
-                    <!-- 5. Satın Alınacak Miktar Alanı ( Default Kilitli ) -->
-                    <div class="mb-3 text-start">
-                        <label for="modal_miktar" class="form-label fw-bold text-secondary small text-uppercase mb-1">Satın Alınacak Miktar</label>
-                        <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end" name="modal_miktar" id="modal_miktar" step="0.01" min="0.01" placeholder="0.00" required disabled>
-                    </div>
-
-                    <!-- 6. Hesaplanan Sonuç Çıktı Alanı ve Binde 2 Vergi Rozeti -->
-                    <div class="mb-1 text-start">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label for="modal_toplam_tutar_tl" class="form-label fw-bold text-secondary small text-uppercase mb-0">Toplam Tahmini Maliyet</label>
-                            <!-- Vergi yükünü anlık simüle eden kurumsal rozet -->
-                            <span id="modal_vergi_bilgi_rozet" class="badge bg-secondary bg-opacity-10 text-secondary fw-bold font-monospace" style="font-size: 11px; padding: 4px 6px;">Vergi: 0,00 ₺</span>
-                        </div>
-                        <div class="input-group">
-                            <input type="text" class="form-control font-monospace fw-bold bg-light text-end pe-3 fs-5 text-dark" id="modal_toplam_tutar_tl" readonly value="0,00 ₺">
-                        </div>
-                        <!-- Emniyet Bariyeri Uyarı Mesajı -->
-                        <div id="bakiye_uyari_metni" class="text-danger small fw-bold mt-1 d-none text-start">
-                            ⚠️ Havuz Ana Para Bakiyesi Yetersiz! Lütfen miktarı veya kuru düşürün.
-                        </div>
-                    </div>
-                    
-                </div>
-                
-                <!-- Modal Aksiyon Butonları -->
-                <div class="modal-footer bg-light border-top-0 py-3" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
-                    <button type="button" class="btn btn-secondary px-4 fw-bold small text-uppercase shadow-sm" data-bs-dismiss="modal" style="font-size: 12px; letter-spacing: 0.5px;">İptal</button>
-                    <button type="submit" class="btn btn-primary px-4 fw-bold small text-uppercase shadow-sm" id="btn_modal_satinal" disabled style="font-size: 12px; letter-spacing: 0.5px; background-color: #6a1b9a; border-color: #6a1b9a;">
-                        Satın Alma İşlemini Tamamla
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- AKILLI FİNANSAL TRANSFER MODALIDIR (DÜZ PASTEL & MİLİMETRİK HİZALAMA) -->
 <div class="modal fade" id="akilliTransferModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="akilliTransferModalLabel" aria-hidden="true">
@@ -1655,6 +2174,274 @@
     </div>
 </div>
 
+<!-- =========================================================================
+     HTML 1. KISIM: MODAL BAŞLIK, GİZLİ VERİ KALKANLARI VE HESAP SEÇİCİLER
+     ========================================================================= -->
+<div class="modal fade" id="forexYatirimModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="forexYatirimModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            
+            <!-- Modal Başlık Alanı (Koyu Kurumsal Pastel) -->
+            <div class="modal-header bg-dark text-white p-3 border-0 d-flex align-items-center justify-content-between" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h6 class="modal-title m-0 fw-bold d-inline-flex align-items-center" id="forexYatirimModalLabel">
+                    <i class="fas fa-exchange-alt me-2 text-warning"></i> Döviz & Varlık Satın Alma Terminali
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none m-0 p-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            
+            <!-- Satın Alma Formu -->
+            <form action="" method="POST" id="forexSatinalForm" class="m-0">
+                <!-- Backend kabul motorunu tetikleyen gizli aksiyon tanımları -->
+                <input type="hidden" name="action" value="interaktif_forex_panel_islem">
+                <input type="hidden" name="panel_islem_yonu" value="ALIS">
+                
+                <!-- 🛡️ Sızdırmazlık Kalkanı: İşbank (A) ID'si backend'e kilitli post edilir -->
+                <input type="hidden" name="panel_cekilecek_hesap" value="2_anapara_TL">
+
+                <div class="modal-body p-4 text-dark bg-light">
+                    
+                    <!-- 1. Üst Şerit: İşbank (A) Yatırım Ana Havuz Dinamik Bakiyesi -->
+                    <div class="p-3 bg-white rounded-3 border border-light-subtle d-flex justify-content-between align-items-center shadow-sm mb-4">
+                        <span class="fw-bold text-secondary text-uppercase tracking-wider small mb-0">İşbank (A) Havuz Ana Para:</span>
+                        <span id="modal-tasarruf-bakiye" class="fw-bold font-monospace fs-5 text-primary" data-tl="<?= (float)($canli_ana_yatirim_bakiye_tl ?? 0) ?>">
+                            <?= number_format($canli_ana_yatirim_bakiye_tl ?? 0, 2, ',', '.') ?> ₺
+                        </span>
+                    </div>
+
+                    <!-- 2. ÇEKİLECEK VE AKTARILACAK HESAP SELECT BOX'LARI -->
+                    <div class="row g-3 mb-4">
+                        <!-- Sol Seçici: İşbank (A) Olarak Kilitli -->
+                        <div class="col-6 text-start">
+                            <label for="modal_cekilecek_hesap" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">Paranın Çekileceği Hesap</label>
+                            <select class="form-select form-select-lg fw-semibold text-dark p-3" id="modal_cekilecek_hesap" disabled>
+                                <option value="2_anapara_TL" selected>İşbankası (A) (TL)</option>
+                            </select>
+                        </div>
+
+                        <!-- Sağ Seçici: Dinamik Varlık Hücresi (onchange tetikleyicili) -->
+                        <div class="col-6 text-start">
+                            <label for="modal_aktarilacak_hesap" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">Paranın Aktarılacağı Hesap</label>
+                            <select class="form-select form-select-lg fw-semibold text-dark p-3" id="modal_aktarilacak_hesap" name="panel_aktarilacak_hesap" onchange="hesaplaModalYatirimMatematigi()" required>
+                                <option value="" disabled selected>Varlık Seçiniz...</option>
+                                <option value="USD">USD (Amerikan Doları)</option>
+                                <option value="EUR">EUR (Euro Bölgesi)</option>
+                                <option value="XAU">XAU (Has Altın Gram)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- =========================================================================
+                         HTML 2. KISIM: CANLI GÖSTERGELER, TUTAR/MİKTAR GİRİŞLERİ VE NİHAİ MATRAH
+                         ========================================================================= -->
+                    <!-- 3. GÖSTERGE KARTLARI -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="card bg-white border border-light-subtle rounded-2 p-3 text-center shadow-sm">
+                                <span id="modal_kur_turu_label" class="d-block text-secondary small fw-bold text-uppercase mb-1 tracking-wider">Banka Alış</span>
+                                <h5 id="modal_canli_kur_text" class="fw-bold text-dark font-monospace m-0">0,0000 ₺</h5>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-white border border-light-subtle rounded-2 p-3 text-center shadow-sm">
+                                <span id="modal_maks_kapasite_label" class="d-block text-secondary small fw-bold text-uppercase mb-1 tracking-wider">Maks. Alınabilir</span>
+                                <h5 id="modal_maks_kapasite_text" class="fw-bold text-success font-monospace m-0">0,00</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. MANUEL KURU GİRİŞİ -->
+                    <div class="mb-4 text-start">
+                        <label for="modal_manuel_kur" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                            <i class="fas fa-edit me-1 text-muted"></i> Kur Belirle
+                        </label>
+                        <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3" name="panel_manuel_kur" id="modal_manuel_kur" step="0.0001" min="0" placeholder="0.0000 (Canlı kuru ezmek için yazın)">
+                    </div>
+
+                    <!-- 5. YAN YANA GİRİŞ ALANLARI (SAĞA TAM YASLI LINK STANDARDI) -->
+                    <div class="row g-3 mb-4">
+                        <!-- Giriş: TL Tutar -->
+                        <div class="col-6 text-start">
+                            <label for="modal_tutar_tl" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                                <i class="fas fa-lira-sign me-1 text-muted"></i> Tutar Belirle (TL)
+                            </label>
+                            <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3 text-primary shadow-none rounded-2" name="panel_tutar_tl" id="modal_tutar_tl" step="0.01" min="0" placeholder="0.00">
+                            <div class="d-flex justify-content-end mt-1">
+                                <span class="text-decoration-underline fw-bold text-dark small font-monospace user-select-none" id="modal_btn_max_tl" style="cursor: pointer; font-size: 11px;">Bakiyenin Tümü</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Giriş: Varlık Miktar -->
+                        <div class="col-6 text-start">
+                            <label id="modal_lbl_islem_miktari" for="modal_miktar" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                                <i class="fas fa-coins me-1 text-muted"></i> Miktar Belirle
+                            </label>
+                            <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3 text-primary shadow-none rounded-2" name="panel_miktar" id="modal_miktar" step="0.0001" min="0" placeholder="0.0000">
+                            <div class="d-flex justify-content-end mt-1">
+                                <span class="text-decoration-underline fw-bold text-dark small font-monospace user-select-none" id="modal_btn_max_miktar" style="cursor: pointer; font-size: 11px;">Bakiyenin Tümü</span>
+                            </div>
+                        </div>
+                    </div>
+                  
+
+                    <!-- 6. NİHAİ MATRAH ÇIKTISI VE VERGİ ŞERİDİ -->
+                    <div class="mb-2 text-start">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold text-secondary small text-uppercase mb-0 tracking-wider">İşlem Tutarı (Vergi Dahil)</label>
+                            <div class="d-flex gap-1">
+                                <span id="modal_panel_tutar_bilgi_rozet" class="badge text-bg-secondary fw-bold font-monospace px-2 py-1">Ana Tutar: 0,00 ₺</span>
+                                <span id="modal_panel_vergi_bilgi_rozet" class="badge text-bg-warning fw-bold font-monospace px-2 py-1">Vergi: 0,00 ₺</span>
+                            </div>
+                            <!-- 🎯 KİLİT VERİ ENTEGRASYONU: JavaScript burayı anlık besler ve post verisinde taşır -->
+                            <input id="modal_panel_tutar_bilgi_input" type="hidden" name="panel_doviz_alış_tutari" value="0,00 ₺">
+                        </div>
+                        <div class="input-group input-group-lg">
+                            <input type="text" class="form-control font-monospace fw-bold bg-white text-end border p-3 text-dark shadow-none" id="modal_panel_nihai_sonuc" readonly value="0,00 ₺">
+                        </div>
+                        <!-- Bootstrap Standart Tehlike Şeridi -->
+                        <div id="modal_panel_bakiye_uyari_metni" class="alert alert-danger d-flex align-items-center p-3 mt-3 mb-0 border-0 fw-semibold rounded-2 d-none">
+                            <i class="fas fa-times-circle me-2 fs-5"></i> İşbank (A) TL Bakiyesi Yetersiz! Lütfen girdiğiniz tutarı veya kuru kontrol edin.
+                        </div>
+                    </div>
+                    
+                </div> <!-- .modal-body sonu -->
+                
+                <!-- Modal Footer Aksiyonları (Büyük Boy Butonlar) -->
+                <div class="modal-footer bg-light border-top p-3 d-flex align-items-center justify-content-end" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary btn-lg px-4 fw-bold text-uppercase d-inline-flex align-items-center justify-content-center m-0 me-2" data-bs-dismiss="modal">
+                        <i class="fas fa-undo me-2"></i> İptal
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-lg px-4 fw-bold text-uppercase d-inline-flex align-items-center justify-content-center text-white m-0" id="modal_btn_panel_onayla" disabled style="background-color: #6a1b9a; border-color: #6a1b9a;">
+                        <i class="fas fa-check-circle me-2"></i> Satın Alma İşlemini Tamamla
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div> <!-- En dıştaki #forexYatirimModal sonu -->
+
+
+<!-- =========================================================================
+     BLOK 2: MANAGEMENT VIEW - DÖVİZ SATIN ALMA MODAL HTML YAPISI
+     ========================================================================= -->
+<div class="modal fade" id="forexYatirimModal" data-bs-backdrop="static" tabindex="-1" aria-labelledby="forexYatirimModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            
+            <!-- Modal Başlık Alanı -->
+            <div class="modal-header bg-dark text-white p-3 border-0 d-flex align-items-center justify-content-between" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <h6 class="modal-title m-0 fw-bold d-inline-flex align-items-center" id="forexYatirimModalLabel">
+                    <i class="fas fa-exchange-alt me-2 text-warning"></i> Döviz & Varlık Satın Alma Terminali
+                </h6>
+                <button type="button" class="btn-close btn-close-white shadow-none m-0 p-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            
+            <!-- Satın Alma Formu -->
+            <form action="" method="POST" id="forexSatinalForm" class="m-0">
+                <!-- Backend kabul motorunu tetikleyen gizli parametre tanımları -->
+                <input type="hidden" name="action" value="interaktif_forex_panel_islem">
+                <input type="hidden" name="panel_islem_yonu" value="ALIS">
+                
+                <!-- 🚨 CRITICAL REFORM: Kaynak hesap kilitli olduğu için veritabanı ID'sini kalkan girdide taşıyoruz -->
+                <input type="hidden" name="panel_cekilecek_hesap" value="2_anapara_TL">
+
+                <div class="modal-body p-4 text-dark bg-light">
+                    
+                    <!-- 1. Üst Şerit: İşbank (A) Yatırım Ana Havuz Dinamik Bakiyesi (JS data-tl Değerini Okur) -->
+                    <div class="p-3 bg-white rounded-3 border border-light-subtle d-flex justify-content-between align-items-center shadow-sm mb-4">
+                        <span class="fw-bold text-secondary text-uppercase tracking-wider small mb-0">İşbank (A) Havuz Ana Para:</span>
+                        <span id="modal-tasarruf-bakiye" class="fw-bold font-monospace fs-5 text-primary" data-tl="<?= (float)($canli_ana_yatirim_bakiye_tl ?? 0) ?>">
+                            <?= number_format($canli_ana_yatirim_bakiye_tl ?? 0, 2, ',', '.') ?> ₺
+                        </span>
+                    </div>
+
+                    <!-- 2. ÇEKİLECEK VE AKTARILACAK HESAP SELECT BOX'LARI -->
+                    <div class="row g-3 mb-4">
+                        <!-- Sol Seçici: İşbank (A) Olarak Kilitli -->
+                        <div class="col-6 text-start">
+                            <label for="modal_cekilecek_hesap" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">Paranın Çekileceği Hesap</label>
+                            <select class="form-select form-select-lg fw-semibold text-dark p-3" id="modal_cekilecek_hesap" disabled>
+                                <option value="2_anapara_TL" selected>İşbankası (A) (TL)</option>
+                            </select>
+                        </div>
+
+                        <!-- Sağ Seçici: Paranın Aktarılacağı Döviz/Varlık Hücresi -->
+                        <div class="col-6 text-start">
+                            <label for="modal_aktarilacak_hesap" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">Paranın Aktarılacağı Hesap</label>
+                            <select class="form-select form-select-lg fw-semibold text-dark p-3" id="modal_aktarilacak_hesap" name="panel_aktarilacak_hesap" onchange="hesaplaModalYatirimMatematigi()" required>
+                                <option value="" disabled selected>Varlık Seçiniz...</option>
+                                <option value="USD">USD (Amerikan Doları)</option>
+                                <option value="EUR">EUR (Euro Bölgesi)</option>
+                                <option value="XAU">XAU (Has Altın Gram)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 3. GÖSTERGE KARTLARI -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <div class="card bg-white border border-light-subtle rounded-2 p-3 text-center shadow-sm">
+                                <span id="modal_kur_turu_label" class="d-block text-secondary small fw-bold text-uppercase mb-1 tracking-wider">Banka Alış</span>
+                                <h5 id="modal_canli_kur_text" class="fw-bold text-dark font-monospace m-0">0,0000 ₺</h5>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-white border border-light-subtle rounded-2 p-3 text-center shadow-sm">
+                                <span id="modal_maks_kapasite_label" class="d-block text-secondary small fw-bold text-uppercase mb-1 tracking-wider">Maks. Alınabilir</span>
+                                <h5 id="modal_maks_kapasite_text" class="fw-bold text-success font-monospace m-0">0,00</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. MANUEL KURU GİRİŞİ -->
+                    <div class="mb-4 text-start">
+                        <label for="modal_manuel_kur" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                            <i class="fas fa-edit me-1 text-muted"></i> Kur Belirle
+                        </label>
+                        <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3" name="panel_manuel_kur" id="modal_manuel_kur" step="0.0001" min="0" placeholder="0.0000 (Canlı kuru ezmek için yazın)">
+                    </div>
+
+                    <!-- 5. YAN YANA GİRİŞ ALANLARI -->
+                    <div class="row g-3 mb-4">
+                        <!-- Giriş: TL Tutar -->
+                        <div class="col-6 text-start">
+                            <label for="modal_tutar_tl" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                                <i class="fas fa-lira-sign me-1 text-muted"></i> Tutar Belirle (TL)
+                            </label>
+                            <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3 text-primary shadow-none rounded-2" name="panel_tutar_tl" id="modal_tutar_tl" step="0.01" min="0" placeholder="0.00">
+                            <div class="d-flex justify-content-end mt-1">
+                                <span class="text-decoration-underline fw-bold text-dark small font-monospace user-select-none" id="modal_btn_max_tl" style="cursor: pointer; font-size: 11px;">Bakiyenin Tümü</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Giriş: Varlık Miktar -->
+                        <div class="col-6 text-start">
+                            <label id="modal_lbl_islem_miktari" for="modal_miktar" class="form-label fw-bold text-secondary small text-uppercase mb-1 tracking-wider">
+                                <i class="fas fa-coins me-1 text-muted"></i> Miktar Belirle
+                            </label>
+                            <input type="number" class="form-control form-control-lg font-monospace fw-bold text-end border p-3 text-primary shadow-none rounded-2" name="panel_miktar" id="modal_miktar" step="0.0001" min="0" placeholder="0.0000">
+                            <div class="d-flex justify-content-end mt-1">
+                                <span class="text-decoration-underline fw-bold text-dark small font-monospace user-select-none" id="modal_btn_max_miktar" style="cursor: pointer; font-size: 11px;">Bakiyenin Tümü</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. NİHAİ MATRAH ÇIKTISI VE VERGİ ŞERİDİ -->
+                    <div class="mb-2 text-start">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold text-secondary small text-uppercase mb-0 tracking-wider">İşlem Tutarı (Vergi Dahil)</label>
+                            <div class="d-flex gap-1 align-items-center">
+                                <span id="modal_panel_tutar_bilgi_rozet" class="badge text-bg-warning fw-bold font-monospace px-2 py-1">Ana Tutar: 0,00 ₺</span>
+                                <span id="modal_panel_vergi_bilgi_rozet" class="badge text-bg-warning fw-bold font-monospace px-2 py-1">Vergi: 0,00 ₺</span>
+                                <!-- 🎯 KİLİT VERİ ALANI: JS burayı anlık doldurur ve post paketinde taşır -->
+                                <input id="modal_panel_tutar_bilgi_input" type="hidden" name="panel_doviz_alış_tutari" value="0,00 ₺">
+                            </div>
+                        </div>
+                        <div class="input-group input-group-lg">
+                            <input type="text" class="form-control font-monospace fw-bold bg-white text-end border p-3 text-dark shadow-none" id="modal_panel_nihai_sonuc" readonly value="0,00 ₺">
+                        </div>
+                        <!-- Bootstrap Standart Tehlike Şeridi -->
+                        <div id="modal_panel_bakiye_uyari_metni" class="alert alert-danger d-flex align-items-center p-3 mt-3 mb-0 border-0 fw-semibold rounded-2 d-none">
+                            <i class="fas fa-times-circle me-2 fs-5"></i> İşbank (A) TL Bakiyesi Yetersiz! Lütfen girdiğiniz tutarı veya kuru kontrol edin.
+                        </div>
 
 
 
@@ -1670,76 +2457,195 @@ const VAKIFBANK_KK_SABIT_LIMIT = 263500.00;
 window.canliAktifKaynakHavuz = '';
 
 
+let isRequestPending = false;
+let aktifKaynakHavuz = '';
+let aktifKaynakAnapara = 0;
+
+
+// 1. PARA FONKSİYON VE FORMATLAR
+
+const TR_PARA_FORMATI = new Intl.NumberFormat('tr-TR', { 
+    minimumFractionDigits: 2, 
+    maximumFractionDigits: 2 
+});
+
+// 🎯 SIZDIRMAZ PARA TEMİZLEME FONKSİYONU
+function paraTemizle(deger) {
+    if (deger === null || deger === undefined) return 0;
+    
+    // Girdiyi stringe çevir ve sağındaki/solundaki boşlukları temizle
+    let temiz = deger.toString().trim();
+    if (!temiz) return 0;
+
+    // Sadece rakamlar, virgül, nokta ve eksi işaretini tut
+    temiz = temiz.replace(/[^0-9,.-]/g, '');
+
+    // Eğer sayı standart Türkçe formatındaysa (Binlik ayraç nokta, kuruş virgül):
+    // Örn: "1.250,50" -> Noktaları sil, virgülü noktaya çevir
+    if (temiz.includes(',') && temiz.includes('.')) {
+        temiz = temiz.replace(/\./g, '').replace(',', '.');
+    } 
+    // Eğer sadece tek bir bilyon/kuruş ayracı olarak virgül kullanıldıysa:
+    // Örn: "1250,50" -> Virgülü noktaya çevir
+    else if (temiz.includes(',')) {
+        temiz = temiz.replace(',', '.');
+    }
+
+    const sonuc = parseFloat(temiz);
+    return isNaN(sonuc) ? 0 : sonuc; // NaN çökme koruması
+}
+
+// 🎯 STANDART PARA FORMATLAMA FONKSİYONU
+function paraFormatla(sayi) {
+    const guvenliSayi = isNaN(parseFloat(sayi)) ? 0 : parseFloat(sayi);
+    return TR_PARA_FORMATI.format(guvenliSayi);
+}
+
+// 🎯 TÜRK LİRASI SİMGELİ FORMATLAMA FONKSİYONU
+function paraFormatlaTL(val) {
+    return paraFormatla(val) + " ₺"; // Kod tekrarı önlendi, yukarıdaki motora bağlandı
+}
+
+
 // =================================================================================
 // 🎯 GENEL FONKSİYONLAR
 // =================================================================================
 
 // ====================== sol blok =================================================
 
-function cariGirdileriKaydetAksiyonu() {
-    const btn = document.getElementById('cari-girdiler-kaydet-btn');
-    if (btn) {
-        btn.innerHTML = "⏳ Kaydediliyor...";
-        btn.disabled = true;
+
+window.cariGirdilerAbortController = null;
+window.cariGirdilerZamanlayici = null;
+
+function cariGirdileriAnlikGuncelle(kartTuru, alanTuru, deger) {
+    // Klavye yazım durma tamponu (Debounce)
+    clearTimeout(window.cariGirdilerZamanlayici);
+    
+    // 🎯 SIFIR GECİKME: Klavyeden harf girdiğin salisede sunucuyu beklemeden
+    // sizin orijinal hesaplama motorlarınızı önyüzde anlık olarak peş peşe tetikliyoruz!
+    if (typeof hariciKrediKartiMatrisiniHesapla === 'function') hariciKrediKartiMatrisiniHesapla();
+    if (typeof hariciProvizyonHesaplaNihai === 'function') {
+        hariciProvizyonHesaplaNihai('isbank');
+        hariciProvizyonHesaplaNihai('vakif');
+    }
+    if (typeof renderNihaiDashboardCore === 'function') renderNihaiDashboardCore();
+
+    window.cariGirdilerZamanlayici = setTimeout(() => {
+        if (navigator.onLine === false && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1')) return;
+        
+        if (window.cariGirdilerAbortController) window.cariGirdilerAbortController.abort();
+        window.cariGirdilerAbortController = new AbortController();
+        const signal = window.cariGirdilerAbortController.signal;
+        
+        // Sadece değişen tek bir hücrenin verisini post paketine ekle (Sıfır ezme güvencesi)
+        const formData = new FormData();
+        formData.append('islem', 'cari_girdiler_kaydet');
+        formData.append('kart_turu', kartTuru); 
+        formData.append('alan_turu', alanTuru); 
+        formData.append('deger', parseFloat(deger) || 0);
+        
+        // Üst kesinleşen dönem tutarları temizlenerek paketleniyor
+        formData.append('isbank_kesinlesen_donem', hariciParaOkuVeTemizle('isbank_kesinlesen_donem'));
+        formData.append('vakif_kesinlesen_donem',  hariciParaOkuVeTemizle('vakif_kesinlesen_donem'));
+        
+        const aktifElemanId = document.activeElement ? document.activeElement.id : null;
+        const secimBaslangic = document.activeElement ? document.activeElement.selectionStart : null;
+        const secimBitis = document.activeElement ? document.activeElement.selectionEnd : null;
+
+        const istekUrl = window.location.origin + '/butce/admin/management';
+
+        fetch(istekUrl, { method: 'POST', body: formData, signal: signal })
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP Hata: ${res.status}`);
+            return res.json();
+        })
+        .then(data => {
+            if (data && data.status === 'success') {
+                // Sayfayı yenilemeden birleşik sanal DOM motorunu tetikle
+                window.monitorGuncelle(() => {
+                    setTimeout(() => {
+                        if (aktifElemanId) {
+                            const odakEl = document.getElementById(aktifElemanId);
+                            if (odakEl) {
+                                odakEl.focus();
+                                if (secimBaslangic !== null && secimBitis !== null && odakEl.tagName === 'INPUT' && odakEl.type !== 'number') {
+                                    odakEl.setSelectionRange(secimBaslangic, secimBitis);
+                                }
+                            }
+                        }
+                    }, 10);
+                    
+                    // Veritabanı mühürlemesinden sonra sizin orijinal matematiksel zinciri son kez mühürle
+                    if (typeof hariciKrediKartiMatrisiniHesapla === 'function') hariciKrediKartiMatrisiniHesapla();
+                    if (typeof hariciProvizyonHesaplaNihai === 'function') {
+                        hariciProvizyonHesaplaNihai('isbank');
+                        hariciProvizyonHesaplaNihai('vakif');
+                    }
+                    if (typeof renderNihaiDashboardCore === 'function') renderNihaiDashboardCore();
+                });
+            }
+        })
+        .catch(err => {
+            if (err.name === 'AbortError') return; 
+            console.log("%c[OFFLINE SAFE LAYER ACTIVE]", "color: #198754; font-weight: bold;");
+        });
+    }, 1500); 
+}
+
+function hesapKesimiYapAksiyonu(kartAdi) {
+    const kartEtiket = kartAdi === 'isbank' ? 'İş Bankası' : 'Vakıfbank';
+    
+    if (!confirm(`${kartEtiket} için hesap kesim işlemi uygulamak istediğinize emin misiniz?\nDönem içi harcamalar kesinleşen ekstreye aktarılacaktır.`)) {
+        return false;
     }
 
-    // Arayüzdeki girdi kutularını canlı yakalıyoruz
-    const inpIsbankKesinlesen = document.getElementById('isbank_kesinlesen_donem');
-    const inpVakifKesinlesen  = document.getElementById('vakif_kesinlesen_donem');
+    // İstek parametrelerini hazırla
+    const veriFormu = new FormData();
+    veriFormu.append('islem', 'kart_hesap_kesimi');
+    veriFormu.append('kart_turu', kartAdi);
 
-    const isbankValue = inpIsbankKesinlesen ? inpIsbankKesinlesen.value : "BULUNAMADI!";
-    const vakifValue  = inpVakifKesinlesen  ? inpVakifKesinlesen.value  : "BULUNAMADI!";
-
-    const formData = new FormData();
-    formData.append('islem', 'cari_girdiler_kaydet');
-
-    // Eski form alanlarınızın gönderimi
-    formData.append('isbank_donem_ici', document.getElementById('isbank_donem_ici')?.value || 0);
-    formData.append('isbank_provizyon', document.getElementById('isbank_provizyon')?.value || 0);
-    formData.append('isbank_doviz',     document.getElementById('isbank_doviz')?.value || 0);
-    formData.append('isbank_ekstre',    document.getElementById('isbank_ekstre')?.value || 0);
-
-    formData.append('vakif_donem_ici',  document.getElementById('vakif_donem_ici')?.value || 0);
-    formData.append('vakif_provizyon',  document.getElementById('vakif_provizyon')?.value || 0);
-    formData.append('vakif_doviz',      document.getElementById('vakif_doviz')?.value || 0);
-    formData.append('vakif_ekstre',     document.getElementById('vakif_ekstre')?.value || 0);
-
-    // Yeni kesinleşen dönem tutarları pakete ekleniyor
-    formData.append('isbank_kesinlesen_donem', isbankValue === "BULUNAMADI!" ? 0 : isbankValue);
-    formData.append('vakif_kesinlesen_donem',  vakifValue === "BULUNAMADI!" ? 0 : vakifValue);
-
-    fetch('/butce/admin/management', { method: 'POST', body: formData })
-    .then(res => res.text())
-    .then(hamMetin => {
-        console.log("[Sunucudan Dönen Saf Yanıt]:", hamMetin);
-        
-        const startIdx = hamMetin.indexOf('{');
-        const endIdx = hamMetin.lastIndexOf('}');
-        
-        if (startIdx !== -1 && endIdx !== -1) {
-            const data = JSON.parse(hamMetin.substring(startIdx, endIdx + 1));
-            
-            // 🎯 DÜZELTME 1: İşlem başarılı ise verilerin ekranda taze parlaması için sayfayı yenile!
-            if (data && data.status === 'success') {
-                window.location.reload();
-                return;
+    fetch(window.location.href, {
+        method: 'POST',
+        body: veriFormu
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.status === 'success') {
+            // Ön yüzdeki inputları sayfa yenilemeden canlı güncelle
+            if (kartAdi === 'isbank') {
+                const donemIciInput = document.getElementById('isbank-donem-ici-input');
+                const ekstreInput = document.getElementById('isbank-ekstre-input');
+                
+                if (donemIciInput && ekstreInput) {
+                    ekstreInput.value = parseFloat(donemIciInput.value || 0).toFixed(2);
+                    donemIciInput.value = "0.00";
+                }
             } else {
-                // 🎯 DÜZELTME 2: Kart kilitliyse veya SQL hatası varsa kullanıcıya mesajı göster!
-                alert(`${data.message || 'Kayıt işlemi reddedildi.'}`);
+                const donemIciInput = document.getElementById('vakif-donem-ici-input');
+                const ekstreInput = document.getElementById('vakif-ekstre-input');
+                
+                if (donemIciInput && ekstreInput) {
+                    ekstreInput.value = parseFloat(donemIciInput.value || 0).toFixed(2);
+                    donemIciInput.value = "0.00";
+                }
             }
+            
+            // Eğer projenizde ana monitor ekranını güncelleyen global bir fonksiyon varsa tetikleyin
+            if (typeof window.monitorGuncelle === "function") {
+                window.monitorGuncelle();
+            }
+            
+            alert(`${kartEtiket} hesap kesimi kuruşu kuruşuna işlendi!`);
         } else {
-            alert(`⚠️ Sunucu JSON yerine ham metin püskürttü:\n\n${hamMetin.replace(/<[^>]*>/g, '')}`);
+            alert("Hata: " + res.message);
         }
-
-        // Hata veya JSON bozulması durumlarında butonu eski aktif haline geri çek
-        if (btn) { btn.innerHTML = "Kaydet"; btn.disabled = false; }
     })
     .catch(err => {
-        console.error("Kredi kartı AJAX hatası:", err);
-        alert("⚠️ Asenkron bağlantı kesildi!");
-        if (btn) { btn.innerHTML = "Kaydet"; btn.disabled = false; }
+        console.error("Hesap kesim hatası:", err);
+        alert("Sistem bağlantı hatası oluştu!");
     });
 }
+
 
 function hariciParaOkuVeTemizle(elementId) {
     const el = document.getElementById(elementId);
@@ -1762,14 +2668,17 @@ function hariciProvizyonHesaplaNihai(kartKey) {
     let kalanTaksitlerToplam = 0;
     let gostergeId = '';
 
+
     if (kartKey === 'isbank') {
         kartLimiti = 321100; // Güncel İşbank KK Limiti
         
         // Kullanıcının provizyon istasyonuna yazdığı sayı ($a)
         girilenMobilLimit = parseFloat(document.getElementById('mobil_isbank_kull_limit')?.value) || 0;
+
         
         // Cari formdaki ve matristeki ID'lerden canlı verileri cımbızlıyoruz
         kesinlesenDonemBorcu = hariciParaOkuVeTemizle('isbank_kesinlesen_donem');
+        dovizTL     = parseFloat(document.getElementById('isbank-doviz-input')?.value) || 0;
         
         // 🎯 TALEBİNİZ: Gelecek aylara sarkan toplam taksit yükü ID'si hesaba dahil edildi
         kalanTaksitlerToplam = hariciParaOkuVeTemizle('isbank_kalan_taksitler');
@@ -1784,6 +2693,7 @@ function hariciProvizyonHesaplaNihai(kartKey) {
         
         // Cari formdaki ve matristeki ID'lerden canlı verileri cımbızlıyoruz
         kesinlesenDonemBorcu = hariciParaOkuVeTemizle('vakif_kesinlesen_donem');
+        dovizTL     = parseFloat(document.getElementById('vakif-doviz-input')?.value) || 0;
         
         // 🎯 TALEBİNİZ: Gelecek aylara sarkan toplam taksit yükü ID'si hesaba dahil edildi
         kalanTaksitlerToplam = hariciParaOkuVeTemizle('vakif_kalan_taksitler');
@@ -1810,33 +2720,7 @@ function hariciProvizyonHesaplaNihai(kartKey) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // İşbank Mobil Giriş Dinleyicisi ($a)
-    const inputIsbank = document.getElementById('mobil_isbank_kull_limit');
-    if (inputIsbank) {
-        inputIsbank.addEventListener('input', function() {
-            hariciProvizyonHesaplaNihai('isbank');
-        });
-    }
 
-    // Vakıfbank Mobil Giriş Dinleyicisi ($v)
-    const inputVakif = document.getElementById('mobil_vakif_kull_limit');
-    if (inputVakif) {
-        inputVakif.addEventListener('input', function() {
-            hariciProvizyonHesaplaNihai('vakif');
-        });
-    }
-
-    // Eğer cari girdiler formu güncellenirse provizyon kartı da anlık senkron olsun
-    const formCari = document.getElementById('cari-girdiler-formu');
-    if (formCari) {
-        formCari.addEventListener('input', function() {
-            hariciProvizyonHesaplaNihai('isbank');
-            hariciProvizyonHesaplaNihai('vakif');
-        });
-    }
-});
 
 
 // ====================== orta blok =================================================
@@ -1967,7 +2851,7 @@ function damacanaAksiyon(event, id, yon) {
     if (event) event.preventDefault();
     
     const birimFiyatInput = document.getElementById('su-birim-fiyat-' + id);
-    const birimFiyat = birimFiyatInput ? parseFloat(birimFiyatInput.value) || 140 : 140;
+    const birimFiyat = birimFiyatInput ? parseFloat(birimFiyatInput.value) || <?=$damacanaSuBirimTutari?> : <?=$damacanaSuBirimTutari?>;
 
     const formData = new FormData();
     formData.append('islem', 'damacana_ode');
@@ -2013,7 +2897,7 @@ function telefonAksiyon(e, id) {
     if (btn) { orijinalMetin = btn.innerHTML; btn.innerHTML = "⏳"; btn.disabled = true; }
 
     const birimFiyatInput = document.getElementById('telefon-birim-fiyat-' + id);
-    const birimFiyat = birimFiyatInput ? parseFloat(birimFiyatInput.value) : 340;
+    const birimFiyat = birimFiyatInput ? parseFloat(birimFiyatInput.value) : <?=$telefonFaturasiBirimTutari?>;
     
     const formData = new FormData();
     formData.append('islem', 'telefon_ode'); 
@@ -2234,8 +3118,8 @@ function anlikBirimFiyatlariniGuncelle() {
     const inpTel = document.getElementById('telefon-birim-fiyat-10');
     const inpSu  = document.getElementById('su-birim-fiyat-12');
 
-    const telFiyat = inpTel ? parseFloat(inpTel.value) || 340.00 : 340.00;
-    const suFiyat  = inpSu  ? parseFloat(inpSu.value)  || 140.00 : 140.00;
+    const telFiyat = inpTel ? parseFloat(inpTel.value) || <?=$telefonFaturasiBirimTutari?> : <?=$telefonFaturasiBirimTutari?>;
+    const suFiyat  = inpSu  ? parseFloat(inpSu.value)  || <?=$damacanaSuBirimTutari?> : <?=$damacanaSuBirimTutari?>;
 
     const formData = new FormData();
     formData.append('islem', 'birimFiyat_kaydet'); // Endpoint mühürü
@@ -2253,36 +3137,65 @@ function anlikBirimFiyatlariniGuncelle() {
     .catch(err => console.error("Birim fiyat senkronizasyon hatası:", err));
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    const inputIds = ['telefon-birim-fiyat-10', 'su-birim-fiyat-12'];
-    inputIds.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            // Kullanıcı fiyatı değiştirip kutudan çıktığı an AJAX otomatik ateşlenir
-            element.addEventListener('change', anlikBirimFiyatlariniGuncelle);
-        }
-    });
-});
+function canlıFaizOnizlemeHesapla() {
+    // 1. Kutulardaki Girdileri Yakalıyoruz
+    const inpKredi = document.getElementById('faiz-kredi-butcesi-input');
+    const inpOran  = document.getElementById('faiz-orani-input');
+    const inpGun   = document.getElementById('faiz-gun-input');
+    const stopaj   = 17.5;
+    
+    // Girdileri güvenli bir şekilde sayı formatına döküyoruz
+    const sanalButce = inpKredi && inpKredi.value ? parseFloat(inpKredi.value) : 0;
+    const oran       = inpOran && inpOran.value   ? parseFloat(inpOran.value)  : 0;
+    const gun        = inpGun && inpGun.value     ? parseInt(inpGun.value)     : 0;
 
+    // 2. 🎯 DÜZELTİLDİ: Orijinal HTML kimliğiniz olan "data_havuz_matrahlari" alanına bağlanıyoruz
+    const dataHavuzu = document.getElementById('data_havuz_matrahlari');
+    
+    // 3. 🎯 DÜZELTİLDİ: HTML etiketlerinizle birebir uyan orijinal "data-isbank-a" ve "data-isbank-o" okunuyor
+    const anaA = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-isbank-a')) || 0 : 0;
+    const anaO = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-isbank-o')) || 0 : 0;
 
-// ====================== sağ blok =================================================
+    // 4. Her Bir Matrah İçin Müstakil Net Faiz Hesaplama Formülü
+    const faizHesapla = (anapara) => {
+        if (anapara <= 0 || oran <= 0 || gun <= 0) return 0;
+        const brut = (anapara * oran * gun) / 36500;
+        return brut * (1 - (stopaj / 100));
+    };
+
+    // Her havuz kendi anaparasına göre bağımsız faiz getirisi üretir
+    const faizGetirisiA = faizHesapla(anaA);
+    const faizGetirisiO = faizHesapla(anaO);
+    const faizGetirisiK = faizHesapla(sanalButce); // Kredi bütçesinin kendi sanal faizi
+
+    // 5. Gösterim Alanları Yakalanır
+    const elPreA = document.getElementById('pre-isbank-a');
+    const elPreO = document.getElementById('pre-isbank-o');
+    const elPreK = document.getElementById('pre-kredi-input');
+    
+    // 6. Güncel paraFormatlaTL Motoruyla Ekrana Basım Yapılır
+    if (elPreA) elPreA.innerHTML = paraFormatlaTL(anaA + faizGetirisiA);
+    if (elPreO) elPreO.innerHTML = paraFormatlaTL(anaO + faizGetirisiO);
+    if (elPreK) elPreK.innerHTML = paraFormatlaTL(sanalButce + faizGetirisiK);
+
+    // 7. Emniyet Bariyeri
+    const modalAcBtn = document.getElementById('faiz-aktar-modal-ac-btn');
+    if (modalAcBtn) {
+        modalAcBtn.disabled = false;
+    }
+}
+
 
 function anlikKrediFaizGuncelle() {
     const inpKredi = document.getElementById('faiz-kredi-butcesi-input');
     const inpOran  = document.getElementById('faiz-orani-input');
     const inpGun   = document.getElementById('faiz-gun-input');
 
-    // Eleman varsa değerini al ve sayıya çevir, yoksa veya boşsa 0 kabul et
-    const evKredisiHam  = inpKredi && inpKredi.value ? parseFloat(inpKredi.value) : 0;
-    const faizOrani     = inpOran && inpOran.value   ? parseFloat(inpOran.value)  : 0;
-    const faizGunSayisi = inpGun && inpGun.value     ? parseInt(inpGun.value)     : 0;
-
-
     const formData = new FormData();
     formData.append('islem', 'faiz_hesapla'); 
-    formData.append('evKredisiHam', evKredisiHam);
-    formData.append('faiz_orani', faizOrani);
-    formData.append('faiz_gun_sayisi', faizGunSayisi);
+    formData.append('evKredisiHam', inpKredi ? parseFloat(inpKredi.value) || 0 : 0);
+    formData.append('faiz_orani', inpOran ? parseFloat(inpOran.value) || 0 : 0);
+    formData.append('faiz_gun_sayisi', inpGun ? parseInt(inpGun.value) || 0 : 0);
 
     fetch('/butce/admin/management', { method: 'POST', body: formData })
     .then(res => res.json())
@@ -2296,21 +3209,9 @@ function anlikKrediFaizGuncelle() {
             console.error("Sunucu işlemi başarısız:", data.message || "Bilinmeyen hata");
         }
     })
-    .catch(err => console.error("Kredi faiz senkronizasyon hatası:", err));
+    .catch(err => console.error("Faiz senkronizasyon hatası:", err));
 }
 
-document.addEventListener("DOMContentLoaded", function() {
-    const ids = ['faiz-kredi-butcesi-input', 'faiz-orani-input', 'faiz-gun-input'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            // Kullanıcı sayı yazdığı an veya kutudan çıktığı an AJAX anlık ateşlenir
-            el.addEventListener('change', function() {
-                anlikKrediFaizGuncelle();
-            });
-        }
-    });
-});
 
 // TRANSFER BLOĞU
 const bekleyenButceGiderleri = [
@@ -2343,21 +3244,6 @@ const finansalHavuzlar = {
     'vakif_a':  { ad: 'Vakıfbank (A)',  idKok: 'vakif_a' },
     'halkbank_o': { ad: 'Halkbank (Ö)', idKok: 'halkbank_o' }
 };
-
-let aktifKaynakHavuz = '';
-let aktifKaynakAnapara = 0;
-
-function paraTemizle(deger) {
-    if (!deger) return 0;
-    let temiz = deger.toString().replace(/[^0-9,.-]/g, '');
-    temiz = temiz.replace(/\./g, '');
-    temiz = temiz.replace(',', '.');
-    return parseFloat(temiz) || 0;
-}
-
-function paraFormatla(sayi) {
-    return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(sayi);
-}
 
 // MODAL AÇILIŞ TETİKLEYİCİSİ
 function akilliTransferModaliAc(havuzKey) {
@@ -2425,14 +3311,7 @@ $('#transferHedefHavuz').on('change', function() {
         $('#akilliBütçeTagAlani').addClass('d-none');
     }
 });
-
-// ETİKETE TIKLANINCA INPUTU DOLDURMA
-$(document).on('click', '.akilli-butce-tag', function() {
-    let ttr = parseFloat($(this).data('tutar')) || 0;
-    if (ttr > 0) {
-        $('#transferTutar').val(paraFormatla(ttr));
-    }
-});
+ 
 
 // BAKIYE KONTROLÜ
 $(document).on('click', '#btnTransferKontcelEt', function() { // İsim yazım hatası düzeltildi
@@ -2545,7 +3424,6 @@ $(document).on('click', '#btnTransferiOnayla', function() {
 // =========================================================================
 // 💳 MODÜLER KREDİ KARTI VE TAKSİT HESAPLAMA MOTORU
 // =========================================================================
-
 function hariciKrediKartiMatrisiniHesapla() {
     // 1. Yardımcı Para Formatlama Rozeti
     const localParaFormatla = (rakam) => {
@@ -2573,8 +3451,6 @@ function hariciKrediKartiMatrisiniHesapla() {
             }
         }
     }
-
-
 
     // Değişken Matrisleri
     let isbankAktifTaksit = 0; let isbankKalanTaksit = 0;
@@ -2619,16 +3495,16 @@ function hariciKrediKartiMatrisiniHesapla() {
     const vakifKalanGosterge = document.getElementById('vakif_kalan_taksitler');
     if (vakifKalanGosterge) vakifKalanGosterge.value = localParaFormatla(vakifKalanTaksit);
 
-    // 5. `kredi_kartlari` Tablo Karşılıkları (Cari form girdilerinden okunan ham sayılar)
-    const isbankDonemIci  = parseFloat(document.getElementById('isbank_donem_ici')?.value) || 0;
-    const isbankProvizyon = parseFloat(document.getElementById('isbank_provizyon')?.value) || 0;
-    const isbankDoviz     = parseFloat(document.getElementById('isbank_doviz')?.value) || 0;
-    const isbankEkstre    = parseFloat(document.getElementById('isbank_ekstre')?.value) || 0;
+    // 5. `kredi_kartlari` Tablo Karşılıkları (DÜZELTİLDİ: PDF'teki tire çizgili DOM ID yapısıyla tam senkronize edildi) 🎯
+    const isbankDonemIci  = parseFloat(document.getElementById('isbank-donem-ici-input')?.value) || 0;
+    const isbankProvizyon = parseFloat(document.getElementById('isbank-provizyon-input')?.value) || 0;
+    const isbankDoviz     = parseFloat(document.getElementById('isbank-doviz-input')?.value) || 0;
+    const isbankEkstre    = parseFloat(document.getElementById('isbank-ekstre-input')?.value) || 0;
 
-    const vakifDonemIci   = parseFloat(document.getElementById('vakif_donem_ici')?.value) || 0;
-    const vakifProvizyon  = parseFloat(document.getElementById('vakif_provizyon')?.value) || 0;
-    const vakifDoviz      = parseFloat(document.getElementById('vakif_doviz')?.value) || 0;
-    const vakifEkstre     = parseFloat(document.getElementById('vakif_ekstre')?.value) || 0;
+    const vakifDonemIci   = parseFloat(document.getElementById('vakif-donem-ici-input')?.value) || 0;
+    const vakifProvizyon  = parseFloat(document.getElementById('vakif-provizyon-input')?.value) || 0;
+    const vakifDoviz      = parseFloat(document.getElementById('vakif-doviz-input')?.value) || 0;
+    const vakifEkstre     = parseFloat(document.getElementById('vakif-ekstre-input')?.value) || 0;
 
     // Veritabanı ekran görüntünüzde doğrulanan mutlak limit matrahları
     const isbankLimit = 321100.00;
@@ -2693,30 +3569,12 @@ function hariciKrediKartiMatrisiniHesapla() {
 }
 
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // Cari girdiler formunu kimlik (ID) üzerinden yakalıyoruz
-    const cariGirdilerFormu = document.getElementById('cari-girdiler-formu');
-    
-    if (cariGirdilerFormu) {
-        // Formun içindeki herhangi bir inputa (Dönem İçi, Provizyon, Döviz, Ekstre) 
-        // bir şey yazıldığı veya silindiği an bu olay ('input') yakalanır
-        cariGirdilerFormu.addEventListener('input', function() {
-            
-            // 🎯 ESKİ FONKSİYON TAMAMEN DEVRE DIŞI BIRAKILDI
-            // Doğrudan taksit döngülerini çalıştırıp göstergeleri ve objeyi günceller
-            hariciKrediKartiMatrisiniHesapla();
-            
-            // Eğer sayfada bağımsız mobil provizyon istasyonu fonksiyonu varsa 
-            // kart bütçeleri değiştikçe orayı da otomatik tetikler ve canlandırır
-            if (typeof hariciProvizyonHesaplaNihai === 'function') {
-                hariciProvizyonHesaplaNihai('isbank');
-                hariciProvizyonHesaplaNihai('vakif');
-            }
-        });
-    }
-});
+// =========================================================================
+// TO DO LİST KISMI VE AKIŞ.
+// =========================================================================
 
+function renderNihaiDashboardCore() {
+    //KREDİ KARTI VERİLERİ PARAMETRELER.
 
     const ccMatrisi = hariciKrediKartiMatrisiniHesapla();
     const isbankAktifTaksit = ccMatrisi.isbank.aktifTaksit;
@@ -2741,31 +3599,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const yeniDonemAitTaksitleri = isbankAktifTaksit + vakifAktifTaksit;
     const yeniDovizBorclariToplam = isbankDoviz + vakifDoviz;
 
-
-function fmtTL(val) {
-    return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val) + " ₺";
-}
-
-function renderNihaiDashboardCore() {
-    // A. ccMatrisi Nesnesinden Canlı Kart Verilerinin Alınması
-    const ccMatrisi = hariciKrediKartiMatrisiniHesapla();
-
-    const isbankAktifTaksit = ccMatrisi.isbank.aktifTaksit;
-    const isbankKalanTaksit = ccMatrisi.isbank.kalanTaksit;
-    const isbankDonemIci    = ccMatrisi.isbank.donemIci;
-    const isbankProvizyon   = ccMatrisi.isbank.provizyon;
-    const isbankDoviz       = ccMatrisi.isbank.doviz;
-    const isbankEkstre      = ccMatrisi.isbank.ekstre;
-    const isbankKesinlesen  = ccMatrisi.isbank.kesinlesen;
-
-    const vakifAktifTaksit  = ccMatrisi.vakif.aktifTaksit;
-    const vakifKalanTaksit  = ccMatrisi.vakif.kalanTaksit;
-    const vakifDonemIci     = ccMatrisi.vakif.donemIci;
-    const vakifProvizyon    = ccMatrisi.vakif.provizyon;
-    const vakifDoviz        = ccMatrisi.vakif.doviz;
-    const vakifEkstre       = ccMatrisi.vakif.ekstre;
-    const vakifKesinlesen   = ccMatrisi.vakif.kesinlesen;
-
     // B. PHP Katmanından Gelen Canlı Veritabanı Değerlerinin Yakalanması
     const divMatrah = document.getElementById('data_havuz_matrahlari');
     const anaIsbankA = divMatrah ? parseFloat(divMatrah.dataset.isbankA) || 0 : 0;
@@ -2781,14 +3614,14 @@ function renderNihaiDashboardCore() {
     const js_yeni_mevcut_bakiye = anaIsbankA + anaIsbankO + anaVakifO + anaNakit;
     const js_yeni_elde_edilen_faiz = nemaA + nemaO;
     const js_yeni_toplam_bakiye = js_yeni_mevcut_bakiye + js_yeni_elde_edilen_faiz;
+    const isbank_a_son_bakiye = anaIsbankA + nemaA;
 
-    // Ekran basımları
-    const elTasarruf = document.getElementById('canli-ana-yatirim-bakiye');
-    if (elTasarruf) elTasarruf.innerHTML = fmtTL(anaIsbankA);
 
-    document.getElementById('js_yeni_mevcut_bakiye').innerHTML = fmtTL(js_yeni_mevcut_bakiye);
-    document.getElementById('js_yeni_elde_edilecek_faiz').innerHTML = "+" + fmtTL(js_yeni_elde_edilen_faiz);
-    document.getElementById('js_yeni_toplam_bakiye').innerHTML = fmtTL(js_yeni_toplam_bakiye);
+  
+
+    document.getElementById('js_yeni_mevcut_bakiye').innerHTML = paraFormatlaTL(js_yeni_mevcut_bakiye);
+    document.getElementById('js_yeni_elde_edilecek_faiz').innerHTML = "+" + paraFormatlaTL(js_yeni_elde_edilen_faiz);
+    document.getElementById('js_yeni_toplam_bakiye').innerHTML = paraFormatlaTL(js_yeni_toplam_bakiye);
 
     // D. CARD 4: DİĞER GİDERLER (BLOKE) MATRİSLERİ HESABI (tutar - odenen)
     const elFatBloke = document.getElementById('js_yeni_faturalar_bloke');
@@ -2799,12 +3632,16 @@ function renderNihaiDashboardCore() {
     const js_dashboard_gider_su   = elSuBloke  ? parseFloat(elSuBloke.dataset.taban)  || 0 : 0;
     const js_dashboard_gider_kredi = elKreBloke ? parseFloat(elKreBloke.dataset.taban) || 0 : 0;
 
+    const tasarruf_tutari = isbank_a_son_bakiye - isbankEkstre - vakifEkstre - js_yeni_faturalar_bloke - js_dashboard_gider_su;
+      // Ekran basımları
+    const elTasarruf = document.getElementById('canli-ana-yatirim-bakiye');
+    if (elTasarruf) elTasarruf.innerHTML = paraFormatlaTL(tasarruf_tutari);
     const js_dashboard_mutlak_toplam_borc = js_yeni_faturalar_bloke + js_dashboard_gider_su + js_dashboard_gider_kredi;
 
-    if (elFatBloke) elFatBloke.innerHTML = fmtTL(js_yeni_faturalar_bloke);
-    if (elSuBloke)  elSuBloke.innerHTML  = fmtTL(js_dashboard_gider_su);
-    if (elKreBloke) elKreBloke.innerHTML = fmtTL(js_dashboard_gider_kredi);
-    document.getElementById('js_dashboard_mutlak_toplam_borc').innerHTML = fmtTL(js_dashboard_mutlak_toplam_borc);
+    if (elFatBloke) elFatBloke.innerHTML = paraFormatlaTL(js_yeni_faturalar_bloke);
+    if (elSuBloke)  elSuBloke.innerHTML  = paraFormatlaTL(js_dashboard_gider_su);
+    if (elKreBloke) elKreBloke.innerHTML = paraFormatlaTL(js_dashboard_gider_kredi);
+    document.getElementById('js_dashboard_mutlak_toplam_borc').innerHTML = paraFormatlaTL(js_dashboard_mutlak_toplam_borc);
 
     // E. CARD 3 & CARD 5: KREDİ KARTI RISK VE TOPLAM BORÇ MATRİSLERİ HESABI
     const js_dashboard_donem_ici        = isbankDonemIci + vakifDonemIci;
@@ -2812,20 +3649,25 @@ function renderNihaiDashboardCore() {
     const js_dashboard_donem_taksitleri  = isbankAktifTaksit + vakifAktifTaksit;
     const js_dashboard_doviz_borcu       = isbankDoviz + vakifDoviz;
 
+  
+    const js_dashboard_isbank_kekstre = isbankEkstre;
+    const js_dashboard_vakif_kekstre = vakifEkstre;
     const js_dashboard_kesinlesen_ekstre = isbankEkstre + vakifEkstre;
     const js_yeni_kk_borcumuz            = isbankKalanTaksit + vakifKalanTaksit;
     const js_dashboard_kk_toplam_borclari = js_dashboard_kesinlesen_ekstre + js_yeni_kk_borcumuz;
 
     // Değerlerin kart hücrelerine enjekte edilmesi
-    document.getElementById('js_dashboard_donem_ici').innerHTML = fmtTL(isbankDonemIci + vakifDonemIci);
-    document.getElementById('js_dashboard_provizyon_toplami').innerHTML = fmtTL(js_dashboard_provizyon_toplami);
-    document.getElementById('js_dashboard_donem_taksitleri').innerHTML = fmtTL(js_dashboard_donem_taksitleri);
-    document.getElementById('js_dashboard_doviz_borcu').innerHTML = fmtTL(js_dashboard_doviz_borcu);
+    document.getElementById('js_dashboard_donem_ici').innerHTML = paraFormatlaTL(isbankDonemIci + vakifDonemIci);
+    document.getElementById('js_dashboard_provizyon_toplami').innerHTML = paraFormatlaTL(js_dashboard_provizyon_toplami);
+    document.getElementById('js_dashboard_donem_taksitleri').innerHTML = paraFormatlaTL(js_dashboard_donem_taksitleri);
+    document.getElementById('js_dashboard_doviz_borcu').innerHTML = paraFormatlaTL(js_dashboard_doviz_borcu);
     
-    document.getElementById('js_yeni_kk_donem_borcu').innerHTML = fmtTL(js_dashboard_donem_ici + js_dashboard_provizyon_toplami);
-    document.getElementById('js_dashboard_kesinlesen_ekstre').innerHTML = fmtTL(js_dashboard_kesinlesen_ekstre);
-    document.getElementById('js_yeni_kk_borcumuz').innerHTML = fmtTL(js_yeni_kk_borcumuz);
-    document.getElementById('js_dashboard_kk_toplam_borclari').innerHTML = fmtTL(js_dashboard_kk_toplam_borclari);
+    document.getElementById('js_yeni_kk_donem_borcu').innerHTML = paraFormatlaTL(js_dashboard_donem_ici + js_dashboard_provizyon_toplami);
+    document.getElementById('js_dashboard_isbank_kekstre').innerHTML = paraFormatlaTL(isbankEkstre);
+    document.getElementById('js_dashboard_vakif_kekstre').innerHTML = paraFormatlaTL(vakifEkstre);
+    document.getElementById('js_dashboard_kesinlesen_ekstre').innerHTML = paraFormatlaTL(js_dashboard_kesinlesen_ekstre);
+    document.getElementById('js_yeni_kk_borcumuz').innerHTML = paraFormatlaTL(js_yeni_kk_borcumuz);
+    document.getElementById('js_dashboard_kk_toplam_borclari').innerHTML = paraFormatlaTL(js_dashboard_kk_toplam_borclari);
 
     // F. 📜 TO-DO TRANSFER EMİRLERİ LOJİSTİK HESAPLAMA AYRIŞTIRMASI
     // Söylediğiniz kurallara göre net atamalar yapılıyor
@@ -2839,169 +3681,22 @@ function renderNihaiDashboardCore() {
     const todo_c4_tutar2 = evKredisi - js_dashboard_gider_kredi;
 
     // To-Do hücre bütçelerinin mühürlenmesi
-    document.getElementById('todo_c2_tutar').innerHTML = fmtTL(todo_c2_tutar);
-    document.getElementById('todo_c0_tutar').innerHTML = fmtTL(todo_c2_tutar);
+    document.getElementById('todo_c2_tutar').innerHTML = paraFormatlaTL(todo_c2_tutar);
+    document.getElementById('todo_c0_tutar').innerHTML = paraFormatlaTL(todo_c2_tutar);
     
     // C1 Toplam Transfer Formülü = Vakıf Ekstre/Kesinlesen + Faturalar Bloke + Aidat/Su Bloke
     const c1_toplam_transfer = todo_c1_tutar + js_yeni_faturalar_bloke + js_dashboard_gider_su;
-    document.getElementById('todo_c1_tutar').innerHTML = fmtTL(c1_toplam_transfer);
+    document.getElementById('todo_c1_tutar').innerHTML = paraFormatlaTL(c1_toplam_transfer);
     
-    document.getElementById('todo_c5_tutar').innerHTML = fmtTL(todo_c5_tutar);
-    document.getElementById('todo_c8_tutar').innerHTML = fmtTL(todo_c8_tutar);
-    document.getElementById('todo_c7_tutar').innerHTML = fmtTL(todo_c7_tutar);
-    document.getElementById('todo_c4_tutar1').innerHTML = fmtTL(todo_c4_tutar1);
+    document.getElementById('todo_c5_tutar').innerHTML = paraFormatlaTL(todo_c5_tutar);
+    document.getElementById('todo_c8_tutar').innerHTML = paraFormatlaTL(todo_c8_tutar);
+    document.getElementById('todo_c7_tutar').innerHTML = paraFormatlaTL(todo_c7_tutar);
+    document.getElementById('todo_c4_tutar1').innerHTML = paraFormatlaTL(todo_c4_tutar1);
     
     // İşbank Ö kalan nema tutarı aktarımı emniyet hesabı
-    document.getElementById('todo_c4_tutar2').innerHTML = fmtTL(todo_c4_tutar2);
+    document.getElementById('todo_c4_tutar2').innerHTML = paraFormatlaTL(todo_c4_tutar2);
 }
 
-// 🎯 KİLİT BAĞLANTI: Sayfa hazır olduğunda ve asenkron veri güncellemeleri bittiğinde motoru ateşle!
-document.addEventListener("DOMContentLoaded", function() {
-    renderNihaiDashboardCore();
-});
-
-/* ========================================================================= 
-   %100 GÜVENLİ VE ELEMENT KONTROLLÜ FİNANSAL SCRIPT MOTORU
-   ========================================================================= */
-
-const liveKurlar = {
-    'USD': <?= (float)($live_kurlar['USD'] ?? 46.8215) ?>,
-    'EUR': <?= (float)($live_kurlar['EUR'] ?? 53.8685) ?>,
-    'XAU': <?= (float)($live_kurlar['XAU'] ?? 6086.4200) ?>
-};
-
-// Tetikleyici Fonksiyon (Pop-up açıldığında elemanları temizler ve sıfırlar)
-function forexAction(type) {
-    if (type === 'isbank_k') {
-        const form = document.getElementById('forexSatinalForm');
-        if (form) { form.reset(); }
-        
-        const elManuelKur = document.getElementById('modal_manuel_kur');
-        const elMiktar = document.getElementById('modal_miktar');
-        const elBtnSatinal = document.getElementById('btn_modal_satinal');
-        const elCanliKurText = document.getElementById('modal_canli_kur_text');
-        const elMaksKapasiteText = document.getElementById('modal_maks_kapasite_text');
-        const elToplamTutarTl = document.getElementById('modal_toplam_tutar_tl');
-        const elVergiRozet = document.getElementById('modal_vergi_bilgi_rozet');
-        const elUyari = document.getElementById('bakiye_uyari_metni');
-
-        if (elManuelKur) elManuelKur.disabled = true;
-        if (elMiktar) elMiktar.disabled = true;
-        if (elBtnSatinal) elBtnSatinal.disabled = true;
-        
-        if (elCanliKurText) elCanliKurText.textContent = "0,0000 ₺";
-        if (elMaksKapasiteText) elMaksKapasiteText.textContent = "0,00";
-        if (elToplamTutarTl) elToplamTutarTl.value = "0,00 ₺";
-        if (elVergiRozet) elVergiRozet.textContent = "Vergi: 0,00 ₺";
-        if (elUyari) elUyari.classList.add('d-none');
-        
-        var myModal = new bootstrap.Modal(document.getElementById('forexYatirimModal'));
-        myModal.show();
-    }
-}
-
-// 🏛️ Finansal Matematik ve Çarpan İstasyonu (Sızdırmazlık Reformu)
-function hesaplaYatirimMatematigi() {
-    const elDovizCinsi = document.getElementById('modal_doviz_cinsi');
-    if (!elDovizCinsi) return;
-    
-    const secilenVarlik = elDovizCinsi.value;
-    if (!secilenVarlik) return;
-
-    
-    // 🎯 REFORM 1: HTML Elementini değil, elementin içindeki data-anapara SAF SAYI değerini çekiyoruz!
-    const elNetTasarruf = document.getElementById('canli-ana-yatirim-bakiye');
-    const netTasarrufSafiBakiye = elNetTasarruf ? parseFloat(elNetTasarruf.dataset.anapara) || 0 : 0;
-
-    const safCanliKur = liveKurlar[secilenVarlik] || 0;
-    
-    const elManuelKurInput = document.getElementById('modal_manuel_kur');
-    const manuelKur = elManuelKurInput ? (parseFloat(elManuelKurInput.value) || 0) : 0;
-    
-    const aktifIslemKuru = (manuelKur > 0) ? manuelKur : safCanliKur;
-    const basamak = (secilenVarlik === 'XAU') ? 2 : 4;
-
-    const elKurTuruLabel = document.getElementById('modal_kur_turu_label');
-    const elCanliKurText = document.getElementById('modal_canli_kur_text');
-
-    if (manuelKur > 0) {
-        if (elKurTuruLabel) elKurTuruLabel.textContent = "Manuel İşlem Kuru";
-        if (elCanliKurText) elCanliKurText.textContent = aktifIslemKuru.toLocaleString('tr-TR', { minimumFractionDigits: basamak }) + " ₺";
-    } else {
-        if (elKurTuruLabel) elKurTuruLabel.textContent = "Canlı Banka Alış";
-        if (elCanliKurText) elCanliKurText.textContent = safCanliKur.toLocaleString('tr-TR', { minimumFractionDigits: basamak }) + " ₺";
-    }
-
-    // 🎯 REFORM 2: Maksimum satın alma kapasitesi artık saf sayı üzerinden kusursuz hesaplanır
-    if (aktifIslemKuru > 0) {
-        const maksKapasite = netTasarrufSafiBakiye / aktifIslemKuru;
-        const elMaksKapasiteText = document.getElementById('modal_maks_kapasite_text');
-        if (elMaksKapasiteText) elMaksKapasiteText.textContent = maksKapasite.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
-    }
-
-    const elMiktarInput = document.getElementById('modal_miktar');
-    const miktar = elMiktarInput ? (parseFloat(elMiktarInput.value) || 0) : 0;
-    
-    if (miktar > 0 && aktifIslemKuru > 0) {
-        let netTutarTl = miktar * aktifIslemKuru;
-        let vergiYuku = netTutarTl * 0.0020; // Binde 2 sabit vergi maliyeti
-        let toplamMaliyetTl = netTutarTl + vergiYuku;
-
-        const elVergiRozet = document.getElementById('modal_vergi_bilgi_rozet');
-        const elToplamTutarTl = document.getElementById('modal_toplam_tutar_tl');
-        
-        if (elVergiRozet) elVergiRozet.textContent = "Vergi: " + vergiYuku.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺";
-        if (elToplamTutarTl) elToplamTutarTl.value = TumMaliyetFormat(toplamMaliyetTl);
-
-        const uyariMetni = document.getElementById('bakiye_uyari_metni');
-        const submitButon = document.getElementById('btn_modal_satinal');
-        
-        // 🎯 REFORM 3: Likidite kontrolü saf sayısal matrahlar arasında jilet gibi karşılaştırılır
-        if (toplamMaliyetTl > netTasarrufSafiBakiye) {
-            if (uyariMetni) uyariMetni.classList.remove('d-none');
-            if (submitButon) submitButon.disabled = true;
-        } else {
-            if (uyariMetni) uyariMetni.classList.add('d-none');
-            if (submitButon) submitButon.disabled = false;
-        }
-    } else {
-        const elToplamTutarTl = document.getElementById('modal_toplam_tutar_tl');
-        const elVergiRozet = document.getElementById('modal_vergi_bilgi_rozet');
-        const submitButon = document.getElementById('btn_modal_satinal');
-        
-        if (elToplamTutarTl) elToplamTutarTl.value = "0,00 ₺";
-        if (elVergiRozet) elVergiRozet.textContent = "Vergi: 0,00 ₺";
-        if (submitButon) submitButon.disabled = true;
-    }
-}
-
-function TumMaliyetFormat(val) {
-    return val.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " ₺";
-}
-
-// Güvenli Event Listener Bağlantıları
-document.addEventListener("DOMContentLoaded", function() {
-    const elDovizCinsi = document.getElementById('modal_doviz_cinsi');
-    const elManuelKur = document.getElementById('modal_manuel_kur');
-    const elMiktar = document.getElementById('modal_miktar');
-
-    if (elDovizCinsi) {
-        elDovizCinsi.addEventListener('change', function() {
-            if (this.value) {
-                if (elManuelKur) elManuelKur.disabled = false;
-                if (elMiktar) elMiktar.disabled = false;
-                hesaplaYatirimMatematigi();
-            }
-        });
-    }
-
-    if (elManuelKur) elManuelKur.addEventListener('input', hesaplaYatirimMatematigi);
-    if (elMiktar) elMiktar.addEventListener('input', hesaplaYatirimMatematigi);
-});
-
-
-
-/////////////////////////////////////////////
 
 function todoGorevTikla(id) {
     const el = document.getElementById('todo_' + id);
@@ -3020,46 +3715,147 @@ function todoGorevTikla(id) {
     }
 }
 
-window.todoDurumlariniYukle = function() {
-    const d_donem = document.querySelector('.badge.bg-primary')?.innerText.trim() || 'genel_donem';
-    
-    ['c0', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'].forEach(id => {
-        const status = localStorage.getItem('todo_status_' + d_donem + '_' + id);
-        const el = document.getElementById('todo_' + id);
+// ======================================================================
+//   DÖVİZ ALIM SATIM MODÜLÜ
+// ======================================================================
+
+// --- ÜST KAPILAR VE HAFIZA ---
+const modalLiveKurlar = {
+    'USD': parseFloat('<?= (float)($live_kurlar['USD'] ?? 46.8215) ?>'),
+    'EUR': parseFloat('<?= (float)($live_kurlar['EUR'] ?? 53.8685) ?>'),
+    'XAU': parseFloat('<?= (float)($live_kurlar['XAU'] ?? 6086.4200) ?>')
+};
+
+let modalSonAktifGiris = 'TL'; 
+
+function forexAction(type) {
+    if (type === 'isbank_k') {
+        const form = document.getElementById('forexSatinalForm');
+        if (form) { form.reset(); }
         
-        if (el) {
-            if (status === 'done') {
-                el.classList.add('bg-success-subtle', 'border-success');
-                el.style.opacity = "0.8";
-            } else {
-                el.classList.remove('bg-success-subtle', 'border-success');
-                el.style.opacity = "1";
-            }
-        }
-    });
+        if (document.getElementById('modal_btn_panel_onayla')) document.getElementById('modal_btn_panel_onayla').disabled = true;
+        if (document.getElementById('modal_canli_kur_text')) document.getElementById('modal_canli_kur_text').textContent = "0,0000 ₺";
+        if (document.getElementById('modal_maks_kapasite_text')) document.getElementById('modal_maks_kapasite_text').textContent = "0,00";
+        if (document.getElementById('modal_panel_nihai_sonuc')) document.getElementById('modal_panel_nihai_sonuc').value = "0,00 ₺";
+        if (document.getElementById('modal_panel_vergi_bilgi_rozet')) document.getElementById('modal_panel_vergi_bilgi_rozet').textContent = "Vergi: 0,00 ₺";
+        if (document.getElementById('modal_panel_tutar_bilgi_rozet')) document.getElementById('modal_panel_tutar_bilgi_rozet').textContent = "Ana Tutar: 0,00 ₺";
+        if (document.getElementById('modal_panel_tutar_bilgi_input')) document.getElementById('modal_panel_tutar_bilgi_input').value = "0,00 ₺";
+        
+        const elUyari = document.getElementById('modal_panel_bakiye_uyari_metni');
+        if (elUyari) elUyari.classList.add('d-none');
+        
+        var myModal = new bootstrap.Modal(document.getElementById('forexYatirimModal'));
+        myModal.show();
+    }
 }
 
 
+function hesaplaModalYatirimMatematigi(tetikleyici = null) {
+    if (tetikleyici) modalSonAktifGiris = tetikleyici;
 
-// =================================================================================
-// 🎯 JAVASCRIPT MOTORU - BLOK 29: SAF RE-RENDER MOTORU VE ASENKRON YAPILAR
-// =================================================================================
+    const elAktarilacak = document.getElementById('modal_aktarilacak_hesap');
+    const btnSubmit = document.getElementById('modal_btn_panel_onayla');
 
-window.monitorGuncelle = function() {
+    // Koruma bariyeri: Varlık cinsi seçilmediyse kilitli kal
+    if (!elAktarilacak || !elAktarilacak.value) {
+        if (btnSubmit) btnSubmit.disabled = true;
+        return;
+    }
+
+    const varlikCinsi = elAktarilacak.value; 
+    const elBakiyeElementi = document.getElementById('modal-tasarruf-bakiye');
+    const bakiyeTL = elBakiyeElementi ? (parseFloat(elBakiyeElementi.dataset.tl) || 0) : 0;
+
+    const safCanliKur = modalLiveKurlar[varlikCinsi] || 0;
+    const elManuelKur = document.getElementById('modal_manuel_kur');
+    const manuelKur = elManuelKur ? (parseFloat(elManuelKur.value) || 0) : 0;
+    const aktifIslemKuru = (manuelKur > 0) ? manuelKur : safCanliKur;
+    const basamak = (varlikCinsi === 'XAU') ? 2 : 4;
+
+    document.getElementById('modal_canli_kur_text').textContent = aktifIslemKuru.toLocaleString('tr-TR', { minimumFractionDigits: basamak }) + " ₺";
+    document.getElementById('modal_lbl_islem_miktari').innerHTML = `<i class="fas fa-coins me-1 text-muted"></i> Miktar Belirle (${varlikCinsi})`;
+
+    // Maksimum kapasite limit hesabı (%0.2 kambiyo vergisi arındırılarak)
+    const netKapasiteTL = bakiyeTL / 1.0020; 
+    const maksAlinabilir = netKapasiteTL / aktifIslemKuru;
+    document.getElementById('modal_maks_kapasite_text').textContent = maksAlinabilir.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + " " + varlikCinsi;
+
+    if (aktifIslemKuru <= 0) return;
+
+    const elTutarInput = document.getElementById('modal_tutar_tl');
+    const elMiktarInput = document.getElementById('modal_miktar');
+    let finalTutarTL = 0;
+    let finalMiktarAdet = 0;
+
+    // Giriş yönüne göre akıllı çapraz hesaplama
+    if (modalSonAktifGiris === 'TL') {
+        finalTutarTL = elTutarInput ? (parseFloat(elTutarInput.value) || 0) : 0;
+        if (finalTutarTL > 0) {
+            let netYatirim = finalTutarTL / 1.0020;
+            finalMiktarAdet = netYatirim / aktifIslemKuru;
+            if (elMiktarInput) elMiktarInput.value = finalMiktarAdet.toFixed(basamak);
+        } else { if (elMiktarInput) elMiktarInput.value = ''; }
+    } else {
+        finalMiktarAdet = elMiktarInput ? (parseFloat(elMiktarInput.value) || 0) : 0;
+        if (finalMiktarAdet > 0) {
+            finalTutarTL = (finalMiktarAdet * aktifIslemKuru) * 1.0020;
+            if (elTutarInput) elTutarInput.value = finalTutarTL.toFixed(2);
+        } else { if (elTutarInput) elTutarInput.value = ''; }
+    }
+
+    const elVergiRozet = document.getElementById('modal_panel_vergi_bilgi_rozet');
+    const elTutarRozet = document.getElementById('modal_panel_tutar_bilgi_rozet');
+    const elNihaiSonuc = document.getElementById('modal_panel_nihai_sonuc');
+    const elUyari = document.getElementById('modal_panel_bakiye_uyari_metni');
+    const elGizliTutarInput = document.getElementById('modal_panel_tutar_bilgi_input');
+
+    if (finalTutarTL > 0 || finalMiktarAdet > 0) {
+        let vergi = finalTutarTL - (finalTutarTL / 1.0020);
+        let anaTutarNet = finalTutarTL - vergi;
+
+        if (elVergiRozet) elVergiRozet.textContent = "Vergi: " + paraFormatlaTL(vergi);
+        if (elNihaiSonuc) elNihaiSonuc.value = paraFormatlaTL(finalTutarTL);
+        if (elTutarRozet) elTutarRozet.textContent = "Ana Tutar: " + paraFormatlaTL(anaTutarNet);
+        
+        // İstediğiniz kilit gizli input eşleşmesi anlık besleniyor
+        if (elGizliTutarInput) elGizliTutarInput.value = paraFormatlaTL(anaTutarNet);
+
+        // Bakiye yetersizlik kalkanı kontrolü
+        if (finalTutarTL > bakiyeTL) {
+            if (elUyari) elUyari.classList.remove('d-none');
+            if (btnSubmit) btnSubmit.disabled = true;
+        } else {
+            if (elUyari) elUyari.classList.add('d-none');
+            if (btnSubmit) btnSubmit.disabled = false;
+        }
+    } else {
+        if (elNihaiSonuc) elNihaiSonuc.value = "0,00 ₺";
+        if (elVergiRozet) elVergiRozet.textContent = "Vergi: 0,00 ₺";
+        if (elTutarRozet) elTutarRozet.textContent = "Ana Tutar: 0,00 ₺";
+        if (elGizliTutarInput) elGizliTutarInput.value = "0,00 ₺";
+        if (btnSubmit) btnSubmit.disabled = true;
+    }
+}
+
+// ===============================================================================
+// MERKEZİ ASENKRON RE-RENDER VE SANAL DOM RESTORE MOTORU (DÖVİZ VE LİMİT REFORMLU) 🚀
+// ===============================================================================
+window.monitorGuncelle = function(callbackGeriCagir) {
     const urlParametreAyirici = window.location.href.indexOf('?') > -1 ? '&' : '?';
     const guvenliUrl = window.location.href + urlParametreAyirici + 't=' + new Date().getTime();
 
     fetch(guvenliUrl)
         .then(res => {
-            if (!res.ok) {
-                throw new Error(`HTTP Hatası! Durum: ${res.status}`);
-            }
+            if (!res.ok) throw new Error(`HTTP Hatası! Durum: ${res.status}`);
             return res.text();
         })
         .then(html => {
             const parser = new DOMParser(); 
             const doc = parser.parseFromString(html, 'text/html');
             
+            const aktifElemanId = document.activeElement ? document.activeElement.id : null;
+
+            // Güncellenecek tüm kritik DOM seçicilerinin listesi 🎯
             const seciciler = [
                 '#monitor-ekrani', 
                 '#taksit-formu', 
@@ -3070,9 +3866,11 @@ window.monitorGuncelle = function() {
                 '.row.g-3.mt-2.mb-4',
                 '#js_su_bloke_miktari',
                 '#js_fatura_bloke_miktari',
+                '#data_havuz_matrahlari',     
+                '.badge.bg-primary',         
                 '#nakit_kutu_bakiye',   
                 '#vakif_kutu_bakiye',   
-                '#isbank_k_kutu_bakiye', 
+                '#isbank_kk_kutu_bakiye',    
                 '#isbank_o_kutu_bakiye',  
                 '#todo_c0_tutar', 
                 '#todo_c1_tutar', 
@@ -3081,97 +3879,520 @@ window.monitorGuncelle = function() {
                 '#todo_c4_tutar1', 
                 '#todo_c4_tutar2',  
                 '#todo_c5_tutar', 
-                '#todo_c6_tutar' 
+                '#todo_c6_tutar',
+                // Donup kalan alt/üst gösterge girdilerinin tam listesi eklendi
+                '#isbank_kesinlesen_donem',
+                '#vakif_kesinlesen_donem',
+                '#isbank_toplam_borc',
+                '#vakif_toplam_borc',
+                '#isbank_kalan_limit',
+                '#vakif_kalan_limit'
             ];
 
             seciciler.forEach(secici => {
                 const yeniEl = doc.querySelector(secici); 
                 const mevcutEl = document.querySelector(secici);
+                
                 if (yeniEl && mevcutEl) {
+                    // REFORM: Eğer eleman bir INPUT ise içeriğini .value ile eşitle! (Kutuların donmasını çözen yer) 🎯
                     if (mevcutEl.tagName === 'INPUT') {
-                        mevcutEl.value = yeniEl.value;
+                        if (mevcutEl.id !== aktifElemanId) {
+                            mevcutEl.value = yeniEl.value;
+                        }
                     } else {
+                        // Diğer standart div/span alanları için innerHTML akışını koru
                         const b_isbank = document.getElementById('mobil_isbank_kull_limit')?.value;
                         const b_vakif  = document.getElementById('mobil_vakif_kull_limit')?.value;
                         
-                        mevcutEl.innerHTML = '';
                         mevcutEl.innerHTML = yeniEl.innerHTML;
                         
-                        if (b_isbank && document.getElementById('mobil_isbank_kull_limit')) {
+                        if (b_isbank && document.getElementById('mobil_isbank_kull_limit') && 'mobil_isbank_kull_limit' !== aktifElemanId) {
                             document.getElementById('mobil_isbank_kull_limit').value = b_isbank;
                         }
-                        if (b_vakif && document.getElementById('mobil_vakif_kull_limit')) {
+                        if (b_vakif && document.getElementById('mobil_vakif_kull_limit') && 'mobil_vakif_kull_limit' !== aktifElemanId) {
                             document.getElementById('mobil_vakif_kull_limit').value = b_vakif;
                         }
                     }
                 }
             });
 
-            if (typeof hesaplaCiftKrediKarti === 'function') { 
-                hesaplaCiftKrediKarti(); 
+            // Gelişmiş yerel hesaplama motorunu tetikle
+            if (typeof hariciKrediKartiMatrisiniHesapla === 'function') { 
+                hariciKrediKartiMatrisiniHesapla(); 
             }
 
-            const k_Buton = document.querySelector('.ode-btn[data-id][data-type="ode"]');
-            const k_OdediMi = k_Buton ? (k_Buton.innerHTML.includes('✓') || k_Buton.closest('.row-kalem')?.classList.contains('row-odendi')) : false;
-            
-            if (k_OdediMi) {
-                const kutuBakiyeEl = document.getElementById('isbank_o_kutu_bakiye');
-                if (kutuBakiyeEl) {
-                    kutuBakiyeEl.innerHTML = "28,97 ₺"; 
+            // Bootstrap tooltip balonlarını yeniden canlandır
+            if (typeof window.bootstrapTooltipYenile === 'function') {
+                window.bootstrapTooltipYenile();
+            }
+
+            // Odaklanma (Focus) ve imleç koruma kalkanı
+            if (aktifElemanId) {
+                const yenidenOdaklan = document.getElementById(aktifElemanId);
+                if (yenidenOdaklan) {
+                    const uzunluk = yenidenOdaklan.value ? yenidenOdaklan.value.length : 0;
+                    yenidenOdaklan.focus();
+                    if (typeof yenidenOdaklan.setSelectionRange === 'function' && yenidenOdaklan.type === 'text') {
+                        yenidenOdaklan.setSelectionRange(uzunluk, uzunluk);
+                    }
                 }
+            }
+
+            if (typeof callbackGeriCagir === 'function') {
+                callbackGeriCagir();
             }
         })
         .catch(err => {
-            console.warn("⚠️ Canlı bütçe monitörü güncellenemedi (Bağlantı hatası):", err.message);
+            console.warn("⚠️ Sanal DOM render motoru uyarısı:", err.message);
+            if (typeof callbackGeriCagir === 'function') callbackGeriCagir();
         });
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    
-    // Tarayıcı ilk yüklendiğinde hafızadaki yapıldı işaretlerini kilitler
-    if (typeof window.todoDurumlariniYukle === 'function') { 
-        window.todoDurumlariniYukle(); 
-    }
-    
-    // Tetikleyici ilk matematik döngüsünü başlatır
-    if (typeof hesaplaCiftKrediKarti === 'function') {
-        hesaplaCiftKrediKarti();
-    }
 
-    let isRequestPending = false;
+function initMerkeziInputDinleyicileri() {
+
+
+    document.addEventListener('input', function(e) {
+        if (!e.target) return;
+
+        // A. Akıllı Faiz Hesaplama Kutuları Tetikleyicisi
+        if (e.target.id === 'faiz-orani-input' || 
+            e.target.id === 'faiz-gun-input' || 
+            e.target.id === 'faiz-kredi-butcesi-input') {
+            canlıFaizOnizlemeHesapla();
+        }
+
+        // B. Modal İçi Faiz Aktarım Over-Draft (Limit Aşım) Kalkanı
+        if (e.target.id === 'modal-aktar-tutar-input') {
+            const tutarInput = e.target;
+            const maxLimit = parseFloat(tutarInput.getAttribute('data-max')) || 0;
+            const yazilan = parseFloat(tutarInput.value) || 0;
+            const onayBtn = document.getElementById('kesin-faiz-aktar-onay-btn');
+
+            if (onayBtn) {
+                if (yazilan > maxLimit || yazilan <= 0) {
+                    tutarInput.classList.add('is-invalid');
+                    onayBtn.disabled = true;
+                } else {
+                    tutarInput.classList.remove('is-invalid');
+                    onayBtn.disabled = false;
+                }
+            }
+        }
+    });
+
+    document.addEventListener('change', function(e) {
+        if (!e.target) return;
+
+        // A. Faiz Kutularından Çıkıldığında Veri Tabanı Senkronu
+        if (e.target.id === 'faiz-orani-input' || 
+            e.target.id === 'faiz-gun-input' || 
+            e.target.id === 'faiz-kredi-butcesi-input') {
+            anlikKrediFaizGuncelle();
+        }
+
+        // B. Modalda Hesap Seçildiğinde Gerçek Birikmiş Nemayı Kutulara Doldurma Motoru
+        if (e.target.id === 'modal-aktar-havuz-secim') {
+            const select = e.target;
+            const dataHavuzu = document.getElementById('data_havuz_matrahlari');
+            
+            const nemaA = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-nema-a')) || 0 : 0;
+            const nemaO = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-nema-o')) || 0 : 0;
+
+            let kullanılabilirNema = 0;
+            if (select.value === 'isbank_a') kullanılabilirNema = nemaA;
+            else if (select.value === 'isbank_o') kullanılabilirNema = nemaO;
+            else if (select.value === 'all') kullanılabilirNema = nemaA + nemaO;
+
+            const tutarInput = document.getElementById('modal-aktar-tutar-input');
+            const onayBtn    = document.getElementById('kesin-faiz-aktar-onay-btn');
+            const uyariMetni = document.getElementById('modal-aktar-uyari-metni');
+
+            if (tutarInput && onayBtn && uyariMetni) {
+                tutarInput.disabled = false;
+                tutarInput.value = kullanılabilirNema.toFixed(2);
+                tutarInput.setAttribute('data-max', kullanılabilirNema);
+                tutarInput.classList.remove('is-invalid');
+                
+                uyariMetni.innerHTML = `Aktarılabilir birikmiş faiz: <span class="text-success fw-bold">${paraFormatlaTL(kullanılabilirNema)}</span>`;
+                onayBtn.disabled = (kullanılabilirNema <= 0);
+            }
+        }
+    });
+
     document.addEventListener('click', function(e) {
+        if (!e.target) return;
 
-        if (e.target && e.target.id === 'taksit-kaydet-btn') {
-            const btn = e.target; if (btn.disabled) return;
-            const orijinalMetin = btn.innerHTML; btn.innerHTML = "⏳ Oy..."; btn.disabled = true;
+        // Butonun kendisine veya içindeki ikon/yazıya tıklanma ihtimaline karşı en yakın butonu buluyoruz
+        const onayBtn = e.target.closest('#kesin-faiz-aktar-onay-btn');
+        if (!onayBtn) return;
+
+        const form = document.getElementById('faiz-aktar-secimli-form');
+        if (!form) return;
+
+        // Mükerrer (çift) tıklamayı önlemek için butonu hemen donduruyoruz
+        onayBtn.disabled = true;
+        const orjinalIcerik = onayBtn.innerHTML;
+        onayBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Mühürleniyor...`;
+
+        // Form verilerini tarayıcı hafızasına paketliyoruz
+        const formData = new FormData(form);
+        
+        // PHP kodunuzdaki if ($islem === 'faiz_aktar') şartını yakalaması için parametreyi ekliyoruz
+        formData.append('islem', 'faiz_aktar');
+        fetch(window.location.href, { method: 'POST', body: formData })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Sunucu hatası: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // PHP'den gelen json_encode yanıtını kontrol ediyoruz
+            if (data.status === 'success') {
+                alert('🎉 ' + data.message); 
+                location.reload(); // Sayfa yenilenerek veritabanı ve session'lar ekrana tam oturur
+            } else {
+                // PHP tarafında bir hata oluştuysa (Örn: bakiye yetersiz uyarısı)
+                alert(data.message);
+                onayBtn.disabled = false;
+                onayBtn.innerHTML = orjinalIcerik;
+            }
+        })
+        .catch(error => {
+            console.error('Mühürleme Hatası:', error);
+            alert('⚠️ Sunucuyla iletişim kurulurken teknik bir hata oluştu!');
+            onayBtn.disabled = false;
+            onayBtn.innerHTML = orjinalIcerik;
+        });
+    });
+
+
+    // A. CARİ AY GİRDİLERİ FORMU DİNLEYİCİSİ (Tek Bir Merkezden Yönetim)
+    const formCari = document.getElementById('cari-girdiler-formu');
+    if (formCari) {
+        formCari.addEventListener('input', function() {
+            // Önce ana matris hesaplanır
+            hariciKrediKartiMatrisiniHesapla();
+            
+            // Ardından provizyonlar güncellenir
+            if (typeof hariciProvizyonHesaplaNihai === 'function') {
+                hariciProvizyonHesaplaNihai('isbank');
+                hariciProvizyonHesaplaNihai('vakif');
+            }
+        });
+    }
+
+    // B. MOBİL LİMİT GİRİŞLERİ (Anlık Provizyon Tetikleyicileri)
+    const inputIsbank = document.getElementById('mobil_isbank_kull_limit');
+    if (inputIsbank) {
+        inputIsbank.addEventListener('input', function() {
+            if (typeof hariciProvizyonHesaplaNihai === 'function') {
+                hariciProvizyonHesaplaNihai('isbank');
+            }
+        });
+    }
+    const inputVakif = document.getElementById('mobil_vakif_kull_limit');
+    if (inputVakif) {
+        inputVakif.addEventListener('input', function() {
+            if (typeof hariciProvizyonHesaplaNihai === 'function') {
+                // Orijinal kodunuzdaki isimlendirmeye ('vakit' veya 'vakif') göre kontrol edin
+                hariciProvizyonHesaplaNihai('vakif'); 
+            }
+        });
+    }
+
+    // C. TELEFON VE SU BİRİM FİYAT GÜNCELLEMELERİ (Change)
+    const birimFiyatIds = ['telefon-birim-fiyat-10', 'su-birim-fiyat-12'];
+    birimFiyatIds.forEach(id => {
+        const element = document.getElementById(id);
+        if (element && typeof anlikBirimFiyatlariniGuncelle === 'function') {
+            element.addEventListener('change', anlikBirimFiyatlariniGuncelle);
+        }
+    });
+
+    // Modalda hesap seçildiğinde gerçek birikmiş nemayı (faizi) bulma ve emniyet kilidi
+    const havuzSelect = document.getElementById('modal-aktar-havuz-secim');
+    if (havuzSelect) {
+        havuzSelect.addEventListener('change', function() {
+            const dataHavuzu = document.getElementById('data_faiz_matrahlari');
+            const nemaA = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-nema-a')) || 0 : 0;
+            const nemaO = dataHavuzu ? parseFloat(dataHavuzu.getAttribute('data-nema-o')) || 0 : 0;
+
+            let kullanılabilirNema = 0;
+            if (this.value === 'isbank_a') kullanılabilirNema = nemaA;
+            else if (this.value === 'isbank_o') kullanılabilirNema = nemaO;
+            else if (this.value === 'all') kullanılabilirNema = nemaA + nemaO;
+
+            const tutarInput = document.getElementById('modal-aktar-tutar-input');
+            const onayBtn    = document.getElementById('kesin-faiz-aktar-onay-btn');
+            const uyariMetni = document.getElementById('modal-aktar-uyari-metni');
+
+            if (tutarInput && onayBtn && uyariMetni) {
+                tutarInput.disabled = false;
+                tutarInput.value = kullanılabilirNema.toFixed(2);
+                tutarInput.setAttribute('data-max', kullanılabilirNema);
+                tutarInput.classList.remove('is-invalid');
+                
+                uyariMetni.innerHTML = `Aktarılabilir birikmiş faiz: <span class="text-success fw-bold">${paraFormatlaTL(kullanılabilirNema)}</span>`;
+                onayBtn.disabled = (kullanılabilirNema <= 0);
+            }
+        });
+    }
+
+    // Kullanıcının elindeki faizden büyük sayı yazmasını engelleyen over-draft kalkanı
+    const modalTutarInput = document.getElementById('modal-aktar-tutar-input');
+    if (modalTutarInput) {
+        modalTutarInput.addEventListener('input', function() {
+            const maxLimit = parseFloat(this.getAttribute('data-max')) || 0;
+            const yazilan = parseFloat(this.value) || 0;
+            const onayBtn = document.getElementById('kesin-faiz-aktar-onay-btn');
+
+            if (onayBtn) {
+                if (yazilan > maxLimit || yazilan <= 0) {
+                    this.classList.add('is-invalid');
+                    onayBtn.disabled = true;
+                } else {
+                    this.classList.remove('is-invalid');
+                    onayBtn.disabled = false;
+                }
+            }
+        });
+    }
+
+    const elAktarilacak = document.getElementById('modal_aktarilacak_hesap');
+    const elManuelKur = document.getElementById('modal_manuel_kur');
+    const elTutarTl = document.getElementById('modal_tutar_tl');
+    const elMiktar = document.getElementById('modal_miktar');
+
+    // Canlı input aksiyon dinleyicileri bağlama
+    if (elAktarilacak) elAktarilacak.addEventListener('change', () => hesaplaModalYatirimMatematigi());
+    if (elManuelKur) elManuelKur.addEventListener('input', () => hesaplaModalYatirimMatematigi());
+    if (elTutarTl) elTutarTl.addEventListener('input', () => hesaplaModalYatirimMatematigi('TL'));
+    if (elMiktar) elMiktar.addEventListener('input', () => hesaplaModalYatirimMatematigi('MIKTAR'));
+
+    // TL "Bakiyenin Tümü" Dinleyicisi
+    const btnMaxTl = document.getElementById('modal_btn_max_tl');
+    if (btnMaxTl) {
+        btnMaxTl.addEventListener('click', function() {
+            const elBakiyeElementi = document.getElementById('modal-tasarruf-bakiye');
+            if (elBakiyeElementi && elAktarilacak && elAktarilacak.value) {
+                const safAnaparaBakiye = parseFloat(elBakiyeElementi.dataset.tl) || 0;
+                if (safAnaparaBakiye > 0) {
+                    if (elTutarTl) elTutarTl.value = safAnaparaBakiye.toFixed(2);
+                    hesaplaModalYatirimMatematigi('TL');
+                }
+            } else { alert("Lütfen önce paranın aktarılacağı bütçe varlık hücresini seçiniz!"); }
+        });
+    }
+
+    // Varlık Cinsi "Bakiyenin Tümü" Dinleyicisi
+    const btnMaxMiktar = document.getElementById('modal_btn_max_miktar');
+    if (btnMaxMiktar) {
+        btnMaxMiktar.addEventListener('click', function() {
+            const elBakiyeElementi = document.getElementById('modal-tasarruf-bakiye');
+            if (elBakiyeElementi && elAktarilacak && elAktarilacak.value) {
+                const varlikCinsi = elAktarilacak.value;
+                const safAnaparaBakiye = parseFloat(elBakiyeElementi.dataset.tl) || 0;
+                const safCanliKur = modalLiveKurlar[varlikCinsi] || 0;
+                const manuelKur = elManuelKur ? (parseFloat(elManuelKur.value) || 0) : 0;
+                const aktifIslemKuru = (manuelKur > 0) ? manuelKur : safCanliKur;
+                const basamak = (varlikCinsi === 'XAU') ? 2 : 4;
+
+                if (safAnaparaBakiye > 0 && aktifIslemKuru > 0) {
+                    const netYatirimMatrahi = safAnaparaBakiye / 1.0020;
+                    const alinabilirMiktar = netYatirimMatrahi / aktifIslemKuru;
+                    if (elMiktar) elMiktar.value = alinabilirMiktar.toFixed(basamak);
+                    hesaplaModalYatirimMatematigi('MIKTAR');
+                }
+            } else { alert("Lütfen önce paranın aktarılacağı bütçe varlık hücresini seçiniz!"); }
+        });
+    }
+
+    // 1. KESİNLENEN DÖNEM DEVİR (KAPATMA & KLONLAMA) EMİR TETİKLEYİCİSİ
+    const kesinDevirOnayBtn = document.getElementById('kesin-devir-onay-btn');
+    if (kesinDevirOnayBtn) {
+        kesinDevirOnayBtn.addEventListener('click', function() {
+            const btn = kesinDevirOnayBtn;
+            const oMetin = btn.innerHTML;
+            
+            // Önyüz kalkanı: Çift tıklamayı engelle ve yükleniyor animasyonunu bas
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ⏳ Dönem Kapatılıyor & Taksitler Senkron Ediliyor...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('islem', 'donem_devret');
+
+            fetch('/butce/admin/management', { method: 'POST', body: formData })
+            .then(res => {
+                if (!res.ok) throw new Error(`Ağ Hatası: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                btn.innerHTML = oMetin;
+                btn.disabled = false;
+                
+                if (data && data.status === 'success') {
+                    // Açık olan Bootstrap onay modal penceresini güvenle kapat ve temizle
+                    const mEl = document.getElementById('donemDevirOnayModal');
+                    const modalObj = bootstrap.Modal.getInstance(mEl);
+                    if (modalObj) modalObj.hide();
+                    
+                    // Zamanı ileri sarıp yeni dönemi render etmek üzere sayfayı yenile
+                    window.location.reload();
+                } else {
+                    // Backend'den (Exception) gelen kurumsal bütçe hata bariyeri mesajını kullanıcıya göster
+                    alert(data.message ? data.message : '⚠️ Dönem devri sırasında veritabanı veya mantık hatası oluştu.');
+                }
+            })
+            .catch(err => {
+                console.error("Dönem devir motor hatası:", err);
+                alert('❌ Sunucuyla iletişim kurulamadı. Lütfen servislerinizi kontrol edin.');
+                btn.innerHTML = oMetin;
+                btn.disabled = false;
+            });
+        });
+    }
+
+    // 2. [TEST] DÖNEMİ GERİ AL (ROLLBACK / HAFİF SIFIRLAMA) EMİR TETİKLEYİCİSİ
+    const donemGeriAlBtn = document.getElementById('donem-geri-al-btn');
+    if (donemGeriAlBtn) {
+        donemGeriAlBtn.addEventListener('click', function() {
+            if (!confirm('⚠️ GERİ YÜKLEME SÜRECİ: Arşiv loglarındaki en son bütçe durumuna geri dönmek, mevcut yeni ayı silmek ve kilitleri açmak istediğinize emin misiniz?')) return;
+            
+            const btn = donemGeriAlBtn;
+            const oMetin = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> ⏳ Zaman Geri Sarılıyor & Kilitler Çözülüyor...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('islem', 'donem_geri_al');
+
+            fetch('/butce/admin/management', { method: 'POST', body: formData })
+            .then(res => {
+                if (!res.ok) throw new Error(`Ağ Hatası: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                btn.innerHTML = oMetin;
+                btn.disabled = false;
+                
+                if (data && data.status === 'success') {
+                    // Başarı bildirimini bas ve eski bütçe sayfasına render ol
+                    if (data.message) alert(data.message);
+                    window.location.reload();
+                } else {
+                    // Log bulunamadı uyarısını veya fırlatılan SQL hatasını bas
+                    alert(data.message ? data.message : '⚠️ Dönem geri alınamadı. Arşiv kaydı eksik olabilir.');
+                }
+            })
+            .catch(err => {
+                console.error("Rollback motor hatası:", err);
+                alert('❌ Sunucuyla iletişim kurulamadı. Zaman geri sarma işlemi başarısız.');
+                btn.innerHTML = oMetin;
+                btn.disabled = false;
+            });
+        });
+    }
+
+}
+
+function initMerkeziTiklamaDinleyicileri() {
+    document.addEventListener('click', function(e) {
+        if (!e.target) return;
+
+        // 1. TAKSİT KAYDET BUTONU
+        if (e.target.id === 'taksit-kaydet-btn') {
+            if (isRequestPending) return;
+            const btn = e.target;
+            const orijinalMetin = btn.innerHTML;
+
+            isRequestPending = true;
+            btn.innerHTML = "⏳ Oy...";
+            btn.disabled = true;
+
             const formEl = document.getElementById('taksit-formu');
-            const formData = new FormData(formEl); formData.append('islem', 'taksit_kaydet');
+            const formData = new FormData(formEl);
+            formData.append('islem', 'taksit_kaydet');
+
             fetch(window.location.href, { method: 'POST', body: formData })
-            .then(res => res.json()).then(data => { btn.innerHTML = orijinalMetin; btn.disabled = false; if (data && data.status === 'success') { window.monitorGuncelle(); } else { alert('⚠️ Taksitler kaydedilemedi.'); } })
-            .catch(err => { console.error("Hata:", err); btn.innerHTML = orijinalMetin; btn.disabled = false; });
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.status === 'success') {
+                    if (typeof window.monitorGuncelle === 'function') window.monitorGuncelle();
+                } else {
+                    alert('⚠️ Taksitler kaydedilemedi.');
+                }
+            })
+            .catch(err => console.error("Hata:", err))
+            .finally(() => {
+                btn.innerHTML = orijinalMetin;
+                btn.disabled = false;
+                isRequestPending = false; // Kilit açıldı
+            });
         }
         
+        // 2. GELİR KAYDET BUTONU
         const gelirBtn = e.target.closest('#gelir-kaydet-btn');
-        if (gelirBtn && !gelirBtn.disabled) {
-            const orijinalMetin = gelirBtn.innerHTML; gelirBtn.innerHTML = "💾..."; gelirBtn.disabled = true;
-            const formData = new FormData(document.getElementById('gelir-butce-formu')); formData.append('islem', 'gelir_kaydet');
-            fetch(window.location.href, { method: 'POST', body: formData }).then(() => { gelirBtn.innerHTML = orijinalMetin; gelirBtn.disabled = false; window.monitorGuncelle(); });
+        if (gelirBtn) {
+            if (isRequestPending || gelirBtn.disabled) return;
+            const orijinalMetin = gelirBtn.innerHTML;
+
+            isRequestPending = true;
+            gelirBtn.innerHTML = "💾...";
+            gelirBtn.disabled = true;
+
+            const formData = new FormData(document.getElementById('gelir-butce-formu'));
+            formData.append('islem', 'gelir_kaydet');
+
+            fetch(window.location.href, { method: 'POST', body: formData })
+            .then(() => {
+                if (typeof window.monitorGuncelle === 'function') window.monitorGuncelle();
+            })
+            .catch(err => console.error(err))
+            .finally(() => {
+                gelirBtn.innerHTML = orijinalMetin;
+                gelirBtn.disabled = false;
+                isRequestPending = false;
+            });
         }
 
+        // 3. GİDER KAYDET BUTONU
         const giderBtn = e.target.closest('#gider-kaydet-btn');
-        if (giderBtn && !giderBtn.disabled) {
-            const orijinalMetin = giderBtn.innerHTML; giderBtn.innerHTML = "💾..."; giderBtn.disabled = true;
-            const formData = new FormData(document.getElementById('gider-butce-formu')); formData.append('islem', 'gider_kaydet');
-            fetch(window.location.href, { method: 'POST', body: formData }).then(() => { giderBtn.innerHTML = orijinalMetin; giderBtn.disabled = false; window.monitorGuncelle(); });
+        if (giderBtn) {
+            if (isRequestPending || giderBtn.disabled) return;
+            const orijinalMetin = giderBtn.innerHTML;
+
+            isRequestPending = true;
+            giderBtn.innerHTML = "💾...";
+            giderBtn.disabled = true;
+
+            const formData = new FormData(document.getElementById('gider-butce-formu'));
+            formData.append('islem', 'gider_kaydet');
+
+            fetch(window.location.href, { method: 'POST', body: formData })
+            .then(() => {
+                if (typeof window.monitorGuncelle === 'function') window.monitorGuncelle();
+            })
+            .catch(err => console.error(err))
+            .finally(() => {
+                giderBtn.innerHTML = orijinalMetin;
+                giderBtn.disabled = false;
+                isRequestPending = false;
+            });
         }
 
+        // 4. EFT VE ÖDEME AKSİYON BUTONLARI (.eft-btn, .ode-btn)
         const btnAct = e.target.closest('.eft-btn, .ode-btn');
-        // Eğer buton zaten mühürlüyse veya içinde "✓" işareti varsa tıklamayı en tepede çöpe at
-        if (btnAct && !btnAct.disabled && !btnAct.innerHTML.includes('✓') && !btnAct.getAttribute('onclick')?.includes('nergizCepOde')) {
+        if (btnAct) {
+            if (isRequestPending || btnAct.disabled || btnAct.innerHTML.includes('✓')) return;
+            if (btnAct.getAttribute('onclick')?.includes('nergizCepOde')) return;
+
             const id = btnAct.getAttribute('data-id');
             const type = btnAct.getAttribute('data-type') || 'ode';
             if (!id) return;
 
+            isRequestPending = true;
             btnAct.innerHTML = "⏳"; 
             btnAct.disabled = true;
 
@@ -3182,220 +4403,239 @@ document.addEventListener("DOMContentLoaded", function () {
             const tutar = tutarInput ? parseFloat(tutarInput.value) || 0 : 0;
 
             if (type === 'maas_eft' || btnAct.classList.contains('eft-btn')) {
-                asılOdemeyiBitir(id, 'maas_eft', btnAct, tutar);
+                if (typeof asılOdemeyiBitir === 'function') asılOdemeyiBitir(id, 'maas_eft', btnAct, tutar);
             } else {
-                giderOdeKontrolEt(btnAct, kalemAdi, tutar, type, id);
+                if (typeof giderOdeKontrolEt === 'function') giderOdeKontrolEt(btnAct, kalemAdi, tutar, type, id);
+            }
+            
+            isRequestPending = false; 
+        }
+
+        // 🎯 AKİLLİ BÜTÇE TAG TIKLAMA ENTEGRASYONU (Merkezi Klik Yöneticisi İçine Eklenecek)
+        const akilliTag = e.target.closest('.akilli-butce-tag');
+        if (akilliTag) {
+            // jQuery bağımlılığı bitti, saf JS dataset ile tutar güvenle okunuyor
+            let ttr = parseFloat(akilliTag.dataset.tutar) || 0;
+            
+            if (ttr > 0) {
+                const transferInput = document.getElementById('transferTutar');
+                if (transferInput) {
+                    // Bir önceki aşamada toparladığımız sızdırmaz paraFormatla motoru kullanılıyor
+                    transferInput.value = paraFormatla(ttr); 
+                }
             }
         }
 
-        const faizAktarBtn = document.getElementById('faiz-aktar-btn');
-        if (faizAktarBtn) {
-            faizAktarBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                if (confirm('Cüzdanlardaki birikmiş nemalar anapara üzerine eklenecek ve raporlara işlenecek. Emin misiniz?')) {
-                    faizAktarBtn.innerHTML = "⏳ Aktarılıyor...";
-                    faizAktarBtn.disabled = true;
 
-                    const formData = new FormData();
-                    formData.append('islem', 'faiz_aktar');
+        // 5. FAİZ AKTAR BUTONU
+        if (e.target.id === 'faiz-aktar-btn') {
+            e.preventDefault();
+            if (isRequestPending) return;
 
-                    fetch('/butce/admin/management', { method: 'POST', body: formData })
-                    .then(res => res.text()) // Sunucu çökme sızıntılarına karşı önce text süzgeci
-                    .then(hamMetin => {
-                        console.log("[Faiz Aktarım Sunucu Saf Çıktı]:", hamMetin);
-                        
-                        const startIdx = hamMetin.indexOf('{');
-                        const endIdx = hamMetin.lastIndexOf('}');
-                        
-                        if (startIdx !== -1 && endIdx !== -1) {
-                            const data = JSON.parse(hamMetin.substring(startIdx, endIdx + 1));
-                            if (data && data.status === 'success') {
-                                window.location.reload();
-                                return;
-                            } else {
-                                alert(`⚠️ Aktarım Reddedildi!\nSunucu Mesajı: ${data.message || 'Bütçe katmanı reddetti.'}`);
-                                faizAktarBtn.innerHTML = "Faiz Aktar";
-                                faizAktarBtn.disabled = false;
-                                return;
-                            }
-                        }
-                        alert(`⚠️ Sunucu Odasından Geçersiz Çıktı Sızdı!\n\n${hamMetin.replace(/<[^>]*>/g, '')}`);
-                        faizAktarBtn.innerHTML = "Faiz Aktar";
-                        faizAktarBtn.disabled = false;
-                    })
-                    .catch(err => {
-                        console.error("Faiz aktarım hatası:", err);
-                        alert("⚠️ Sunucu asenkron bağlantısı koptu!");
-                        faizAktarBtn.innerHTML = "Faiz Aktar";
-                        faizAktarBtn.disabled = false;
-                    });
-                }
-            });
-        }
+            if (confirm('Cüzdanlardaki birikmiş nemalar anapara üzerine eklenecek ve raporlara işlenecek. Emin misiniz?')) {
+                const faizAktarBtn = e.target;
+                isRequestPending = true;
+                faizAktarBtn.innerHTML = "⏳ Aktarılıyor...";
+                faizAktarBtn.disabled = true;
 
-        const sifirlaBtn = document.getElementById('simulasyon-sifirla-btn');
-        if (sifirlaBtn) {
-            // 🎯 KİLİT ÇÖZÜCÜ: Mükerrer tetiklenmeleri engellemek için eski listener'ı öldürüp temiz açıyoruz
-            const yeniSifirlaBtn = sifirlaBtn.cloneNode(true);
-            sifirlaBtn.parentNode.replaceChild(yeniSifirlaBtn, sifirlaBtn);
+                const formData = new FormData();
+                formData.append('islem', 'faiz_aktar');
 
-            yeniSifirlaBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                
-                if (confirm('Tüm adımlar sıfırlanacak (Tablolar varsayılan ayarlara dönecek). Emin misiniz?')) {
-                    yeniSifirlaBtn.innerHTML = "⏳ Sıfırlanıyor...";
-                    yeniSifirlaBtn.disabled = true;
-
-                    const formData = new FormData(); 
-                    formData.append('islem', 'simulasyon_sifirla');
+                fetch('/butce/admin/management', { method: 'POST', body: formData })
+                .then(res => res.text())
+                .then(hamMetin => {
+                    const startIdx = hamMetin.indexOf('{');
+                    const endIdx = hamMetin.lastIndexOf('}');
                     
-                    fetch('/butce/admin/management', { method: 'POST', body: formData })
-                    .then(res => res.text()) // 🎯 REFORM 1: Sunucu çökme sızıntılarını yakalamak için önce ham metin olarak alıyoruz
-                    .then(hamMetin => {
-                        console.log("[Sıfırlama Sunucu Saf Çıktı]:", hamMetin);
-                        
-                        // Metin içerisindeki geçerli JSON sınırlarını cımbızla çekme kalkanı
-                        const startIdx = hamMetin.indexOf('{');
-                        const endIdx = hamMetin.lastIndexOf('}');
-                        
-                        if (startIdx !== -1 && endIdx !== -1) {
-                            const data = JSON.parse(hamMetin.substring(startIdx, endIdx + 1));
-                            
-                            if (data && data.status === 'success') {
-                                // 🎯 REFORM 2: Tüm tarayıcıyı (panel ayarlarını) körü körüne patlatmak yerine,
-                                // Sadece telefon ödeme kilitlerine ait local flag'leri temizliyoruz!
-                                Object.keys(localStorage).forEach(key => {
-                                    if (key.startsWith('tel_kilit_')) {
-                                        localStorage.removeItem(key);
-                                    }
-                                });
-                                
-                                window.location.reload();
-                                return;
-                            } else {
-                                // Sunucu odasından gelen gerçek SQL hatasını ekrana püskürtür
-                                alert(`⚠️ Sıfırlama Reddedildi!\nSunucu Mesajı: ${data.message || 'Bütçe katmanı isteği reddetti.'}`);
-                                yeniSifirlaBtn.innerHTML = "Simülasyonu Sıfırla";
-                                yeniSifirlaBtn.disabled = false;
-                                return;
-                            }
+                    if (startIdx !== -1 && endIdx !== -1) {
+                        const data = JSON.parse(hamMetin.substring(startIdx, endIdx + 1));
+                        if (data && data.status === 'success') {
+                            window.location.reload();
+                            return;
+                        } else {
+                            alert(`⚠️ Aktarım Reddedildi!\nSunucu Mesajı: ${data.message || 'Bütçe katmanı reddetti.'}`);
                         }
-                        
-                        // Eğer JSON yapısı hiç bulunamazsa ham PHP Fatal Error çıktısını ekrana basar
+                    } else {
                         alert(`⚠️ Sunucu Odasından Geçersiz Çıktı Sızdı!\n\n${hamMetin.replace(/<[^>]*>/g, '')}`);
-                        yeniSifirlaBtn.innerHTML = "Simülasyonu Sıfırla";
-                        yeniSifirlaBtn.disabled = false;
-                    })
-                    .catch(err => {
-                        console.error("Sıfırlama Hatası:", err);
-                        alert("⚠️ Sunucu odası asenkron bağlantısı koptu.");
-                        yeniSifirlaBtn.innerHTML = "Simülasyonu Sıfırla";
-                        yeniSifirlaBtn.disabled = false;
-                    });
-                }
-            });
-        }
-
-        // İstek durumunu tarayıcı hafızasında tutan mutlak kilit değişkeni
-        let isDonemDevrediliyor = false;
-
-        const kesinDevirOnayBtn = document.getElementById('kesin-devir-onay-btn');
-        if (kesinDevirOnayBtn) {
-            kesinDevirOnayBtn.addEventListener('click', function(e) {
-                // Formun veya butonun kendi kendine rastgele tetiklenmesini önle
-                e.preventDefault();
-                
-                // 🔒 BARİYER 1: Eğer arka planda zaten bir istek yürütülüyorsa, sonraki basışları ANINDA çöpe at
-                if (isDonemDevrediliyor) return false;
-                
-                isDonemDevrediliyor = true;
-                const btn = kesinDevirOnayBtn;
-                const oMetin = btn.innerHTML;
-                
-                // 🔒 BARİYER 2: Butonu anında fiziksel ve görsel olarak kilitle
-                btn.innerHTML = "⏳ Dönem Kapatılıyor & Taksitler Senkron Ediliyor...";
-                btn.disabled = true;
-                
-                // Kullanıcı devir esnasında vazgeçip modalı kapatamasın diye tüm iptal butonlarını gizle
-                const closeButtons = document.querySelectorAll('#donemDevirOnayModal [data-bs-dismiss="modal"]');
-                closeButtons.forEach(cBtn => cBtn.style.display = 'none');
-
-                const formData = new FormData();
-                formData.append('islem', 'donem_devret');
-
-                // İstek doğrudan sunucuya tek bir hat üzerinden fırlatılır
-                fetch(window.location.href, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data && data.status === 'success') {
-                        // Önbellek ve session takılmalarını sıfırlamak için sayfayı ana dizine zorla yönlendir
-                        window.location.href = window.location.pathname; 
-                    } else {
-                        alert('⚠️ Dönem devri sırasında bir hata oluştu.');
-                        // Hata durumunda kilitleri tamamen aç ve butonları geri getir
-                        isDonemDevrediliyor = false;
-                        btn.innerHTML = oMetin;
-                        btn.disabled = false;
-                        closeButtons.forEach(cBtn => cBtn.style.display = 'inline-block');
                     }
                 })
                 .catch(err => {
-                    console.error("Devir hatası:", err);
-                    alert('⚠️ Sunucu ile bağlantı kesildi veya bir hata oluştu.');
-                    // Bağlantı koparsa kilitleri tamamen aç ve butonları geri getir
-                    isDonemDevrediliyor = false;
-                    btn.innerHTML = oMetin;
-                    btn.disabled = false;
-                    closeButtons.forEach(cBtn => cBtn.style.display = 'inline-block');
+                    console.error("Faiz aktarım hatası:", err);
+                    alert("⚠️ Sunucu asenkron bağlantısı koptu!");
+                })
+                .finally(() => {
+                    faizAktarBtn.innerHTML = "Faiz Aktar";
+                    faizAktarBtn.disabled = false;
+                    isRequestPending = false;
                 });
-            });
+            }
         }
 
-        const donemGeriAlBtn = document.getElementById('donem-geri-al-btn');
-        if (donemGeriAlBtn) {
-            donemGeriAlBtn.addEventListener('click', function() {
-                if (!confirm('⚠️ dEneMe SÜRECİ: Aktif dönemi bir ay geriye çekmek ve kilitleri açmak istediğinize emin misiniz?')) return;
-                const btn = donemGeriAlBtn;
-                const oMetin = btn.innerHTML;
-                btn.innerHTML = "⏳ Kilit Açılıyor...";
-                btn.disabled = true;
+        // 6. SİMÜLASYON SIFIRLA BUTONU
+        if (e.target.id === 'simulasyon-sifirla-btn') {
+            e.preventDefault();
+            if (isRequestPending) return;
 
-                const formData = new FormData();
-                formData.append('islem', 'donem_geri_al');
+            if (confirm('Tüm adımlar sıfırlanacak (Tablolar varsayılan ayarlara dönecek). Emin misiniz?')) {
+                const sifirlaBtn = e.target;
+                isRequestPending = true;
+                sifirlaBtn.innerHTML = "⏳ Sıfırlanıyor...";
+                sifirlaBtn.disabled = true;
 
-                fetch(window.location.href, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    btn.innerHTML = oMetin;
-                    btn.disabled = false;
-                    if (data && data.status === 'success') {
-                        window.location.reload();
-                    } else {
-                        alert('⚠️ Dönem geri alınamadı.');
+                const formData = new FormData(); 
+                formData.append('islem', 'simulasyon_sifirla');
+                
+                fetch('/butce/admin/management', { method: 'POST', body: formData })
+                .then(res => res.text())
+                .then(hamMetin => {
+                    const startIdx = hamMetin.indexOf('{');
+                    const endIdx = hamMetin.lastIndexOf('}');
+                    
+                    if (startIdx !== -1 && endIdx !== -1) {
+                        const data = JSON.parse(hamMetin.substring(startIdx, endIdx + 1));
+                        if (data && data.status === 'success') {
+                            Object.keys(localStorage).forEach(key => {
+                                if (key.startsWith('tel_kilit_')) {
+                                    localStorage.removeItem(key);
+                                }
+                            });
+                            window.location.reload();
+                            return;
+                        }
                     }
+                    alert("⚠️ Sıfırlama işlemi sunucu tarafında tamamlanamadı.");
                 })
-                .catch(err => {
-                    console.error("Kilit açma hatası:", err);
-                    btn.innerHTML = oMetin;
-                    btn.disabled = false;
+                .catch(err => console.error("Sıfırlama hatası:", err))
+                .finally(() => {
+                    sifirlaBtn.innerHTML = "Simülasyonu Sıfırla";
+                    sifirlaBtn.disabled = false;
+                    isRequestPending = false;
                 });
-            });
+            }
         }
     });
+}
 
-
-
-
-
-
-});
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log("🚀 Yapılandırılmış Yeni Finansal Motor Aktif.");
+
+    // 1. Önceki Durumları / State Verilerini Yükle
     if (typeof window.todoDurumlariniYukle === 'function') { 
         window.todoDurumlariniYukle(); 
     }
+    // 2. Sayfa İlk Açılış Tetiklemeleri (Ana Matris Aktif Olacak Şekilde Sıralı Render)
+    if (typeof hariciKrediKartiMatrisiniHesapla === 'function') {
+        hariciKrediKartiMatrisiniHesapla();
+    }
+    if (typeof renderNihaiDashboardCore === 'function') {
+        renderNihaiDashboardCore();
+    }
+    // 3. Olay Dinleyicilerini Güvenli Çatılar Altında Başlat
+    initMerkeziInputDinleyicileri();
+    initMerkeziTiklamaDinleyicileri();
+    canlıFaizOnizlemeHesapla();
+
+    
+    // Bootstrap modal kapatıldığında veya gizlendiğinde form alanlarını temizleme güvenliği
+    const myModalEl = document.getElementById('forexYatirimModal');
+    if (myModalEl) {
+        myModalEl.addEventListener('hidden.bs.modal', function () {
+            const form = document.getElementById('forexSatinalForm');
+            if (form) form.reset();
+            document.getElementById('modal_canli_kur_text').textContent = "0,0000 ₺";
+            document.getElementById('modal_maks_kapasite_text').textContent = "0,00";
+            document.getElementById('modal_panel_nihai_sonuc').value = "0,00 ₺";
+            document.getElementById('modal_panel_vergi_bilgi_rozet').textContent = "Vergi: 0,00 ₺";
+            document.getElementById('modal_panel_tutar_bilgi_rozet').textContent = "Tutar: 0,00 ₺";
+            document.getElementById('modal_panel_bakiye_uyari_metni').classList.add('d-none');
+            document.getElementById('modal_btn_panel_onayla').disabled = true;
+        });
+    }
+
+    // =========================================================================
+    // 🚀 ASENKRON AJAX SÜRÜCÜ MOTORU (NİHAİ BAŞARI ENTEGRASYONLU SÜRÜM)
+    // =========================================================================
+    const form = document.getElementById('forexSatinalForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Sayfa yenilenmesini kökten engelle
+
+            const btnSubmit = document.getElementById('modal_btn_panel_onayla');
+            if (btnSubmit) {
+                btnSubmit.disabled = true;
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Kaydediliyor...';
+            }
+
+            const formData = new FormData(form);
+            const requestUrl = form.getAttribute('action') || window.location.href;
+
+            fetch(requestUrl, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => {
+                // 🔔 HATA RADARI: Sunucudan JSON dışı bir arıza veya HTML sızarsa doğrudan yakalar
+                if (!response.ok) {
+                    return response.text().then(text => { 
+                        throw new Error(`Sunucu Hatası Kodu: ${response.status}\nDetay: ${text}`); 
+                    });
+                }
+                return response.json();
+            })
+            .then(res => {
+                // 🎯 KİLİT ÇÖZÜM: Sunucudan dönen JSON yanıtını işleyen asıl motor burasıdır
+                if (res.success) {
+                    // 1. Başarı Mesajını Ekrana Bas
+                    alert(res.message);
+
+                    // 2. Ana Ekrandaki ve Modal İçindeki Bakiyeyi Sayfa Yenilenmeden Anlık Güncelle
+                    const elBakiyeElementi = document.getElementById('modal-tasarruf-bakiye');
+                    if (elBakiyeElementi) {
+                        elBakiyeElementi.dataset.tl = res.data.yeni_anapara;
+                        elBakiyeElementi.textContent = res.data.yeni_anapara.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " ₺";
+                    }
+
+                    // 3. Modalı Kapat, Formu Temizle ve Arkada Kalan Siyah Perdeyi Temizle
+                    setTimeout(() => {
+                        const modalElement = document.getElementById('forexYatirimModal');
+                        let modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        if (!modalInstance) {
+                            modalInstance = new bootstrap.Modal(modalElement);
+                        }
+                        modalInstance.hide(); // Modalı pürüzsüzce kapatır
+                        form.reset(); // Giriş alanlarını sıfırlar
+
+                        // 🛡️ Çift Karartma (Backdrop) Koruma Kalkanı
+                        const backdrop = document.querySelector('.modal-backdrop');
+                        if (backdrop) backdrop.remove();
+                        document.body.classList.remove('modal-open');
+                        document.body.style.removeProperty('padding-right');
+                    }, 100);
+
+                } else {
+                    // Sunucu veritabanı kalkanından (Örn: Bakiye Yetersiz) dönen hatayı gösterir
+                    alert(res.message);
+                    if (btnSubmit) {
+                        btnSubmit.disabled = false;
+                        btnSubmit.innerHTML = '<i class="fas fa-check-circle me-2"></i> Satın Alma İşlemini Tamamla';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('AJAX Detaylı Hata:', error);
+                alert("İletişim/Sistem Arızası:\n" + error.message); // Ekrana sunucunun fırlattığı gerçek hatayı basar
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="fas fa-check-circle me-2"></i> Satın Alma İşlemini Tamamla';
+                }
+            });
+        });
+    }
+
 });
+
 
 </script>
 

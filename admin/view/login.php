@@ -1,4 +1,15 @@
-<?php require admin_view('static/header'); ?>
+<?php 
+    ## Tags Bilgileri
+    $meta = [
+        'site_title' => 'Giriş Yap | Bütçe Yönetimi',
+        'site_desc' => 'Bütçe Yönetimi',
+        'site_keyw' => 'Bütçe Yönetimi'
+    ];
+    # Tags Bilgileri
+
+    require admin_view("static/header"); 
+
+?>
 
 <!--login screen-->
 <div class="login-screen">

@@ -25,7 +25,7 @@ $menus = [
         ]
     ],       
     'management' => [
-        'title' => 'Ev Yönetimi',
+        'title' => 'Bütçe Yönetimi',
         'icon' => 'home',
         'permissions' => [
             'show' => 'Görüntüleme',
@@ -35,11 +35,30 @@ $menus = [
         ],
         'submenus' => [
             'management' => 'Güncel Dönem',
-            'management_last' => 'Gelecek Dönem',
+            'management_next' => 'Gelecek Dönem',
+            'harcama_raporu_arsiv' => 'Geçmiş Dönem (Arşiv)',
+            'yatirim' => 'Altın - Döviz Al-Sat',
+            'yatirim_arsiv_doviz' => 'Döviz Al-Sat (Arşiv)',
+            'yatirim_arsiv_ev' => 'Ev Alımı',
+            'yatirim_arsiv' => 'Mevduat-Altın (Arşiv)',
             'forex' => 'Yatırım Paneli',
-            //'add_menu' => 'Menü Ekle',
-            //'edit_product' => 'Ürün Düzenle',
-            'budget' => 'Maaş Hesapla'
+            'currency_debt' => 'Borç Ödeme'
+
+        ]
+    ],
+        'harcamalar' => [
+        'title' => 'Kredi Kartı Yönetimi',
+        'icon' => 'home',
+        'permissions' => [
+            'show' => 'Görüntüleme',
+            'add' => 'Ekleme',
+            'edit' => 'Düzenleme',
+            'delete' => 'Silme'
+        ],
+        'submenus' => [
+            'ekstreler' => 'Ekstre İşlemleri',
+            'harcama_list' => 'Harcama Dökümü',
+            'harcama_list_arsiv' => 'Harcama Dökümü 2025'
         ]
     ],
     'users' => [
